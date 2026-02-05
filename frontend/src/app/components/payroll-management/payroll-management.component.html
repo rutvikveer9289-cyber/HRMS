@@ -1,0 +1,299 @@
+<div class="payroll-container">
+    <div class="header">
+        <h1>Payroll Management</h1>
+        <p>Manage salaries, process payroll, and handle overtime</p>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div class="tabs">
+        <button *ngIf="canManagePayroll" [class.active]="activeTab === 'payroll'" (click)="setActiveTab('payroll')">
+            Payroll Processing
+        </button>
+        <button *ngIf="canManagePayroll" [class.active]="activeTab === 'salary'" (click)="setActiveTab('salary')">
+            Salary Management
+        </button>
+        <button *ngIf="canManagePayroll" [class.active]="activeTab === 'overtime'" (click)="setActiveTab('overtime')">
+            Overtime Approvals
+        </button>
+        <button [class.active]="activeTab === 'my-payslips'" (click)="setActiveTab('my-payslips')">
+            My Payslips
+        </button>
+    </div>
+
+    <!-- Payroll Processing Tab -->
+    <div *ngIf="activeTab === 'payroll'" class="tab-content">
+        <div class="controls">
+            <div class="month-selector">
+                <label>Month:</label>
+                <select [(ngModel)]="selectedMonth" (change)="loadPayrollRecords()">
+                    <option *ngFor="let m of [1,2,3,4,5,6,7,8,9,10,11,12]" [value]="m">
+                        {{ getMonthName(m) }}
+                    </option>
+                </select>
+            </div>
+            <div class="year-selector">
+                <label>Year:</label>
+                <input type="number" [(ngModel)]="selectedYear" (change)="loadPayrollRecords()" />
+            </div>
+            <button class="btn-primary" (click)="processAllPayroll()" [disabled]="loading">
+                Process All Payroll
+            </button>
+            <div class="single-process">
+                <input type="text" [(ngModel)]="processSingleEmpId" placeholder="Emp ID (RBIS0001)" />
+                <button class="btn-secondary" (click)="processSinglePayroll()" [disabled]="loading">
+                    Process Single
+                </button>
+            </div>
+        </div>
+
+        <div *ngIf="loading" class="loading">Loading...</div>
+
+        <div *ngIf="!loading && payrollRecords.length === 0" class="empty-state">
+            <p>No payroll records found for {{ getMonthName(selectedMonth) }} {{ selectedYear }}</p>
+            <p>Click "Process All Payroll" to generate payroll for all employees</p>
+        </div>
+
+        <div *ngIf="!loading && payrollRecords.length > 0" class="payroll-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Employee ID</th>
+                        <th>Gross Salary</th>
+                        <th>Deductions</th>
+                        <th>Overtime</th>
+                        <th>Net Salary</th>
+                        <th>Status</th>
+                        <th>Bank Info</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let record of payrollRecords">
+                        <td>{{ record.emp_id }}</td>
+                        <td>{{ formatCurrency(record.gross_salary) }}</td>
+                        <td class="deduction">{{ formatCurrency(record.total_deductions) }}</td>
+                        <td>{{ formatCurrency(record.overtime_amount) }}</td>
+                        <td class="net-salary">{{ formatCurrency(record.net_salary) }}</td>
+                        <td>
+                            <span [class]="'status-badge status-' + record.status.toLowerCase()">
+                                {{ record.status }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="bank-details" *ngIf="record.owner">
+                                <strong>{{ record.owner.bank_name || 'No Bank' }}</strong>
+                                <span>{{ record.owner.bank_account_no || 'No Acc' }}</span>
+                            </div>
+                        </td>
+                        <td class="actions">
+                            <button class="btn-download" (click)="downloadPayslip(record.id, record.emp_id)">
+                                Download Payslip
+                            </button>
+                            <div *ngIf="record.status !== 'PAID'" class="pay-action">
+                                <select #pm>
+                                    <option *ngFor="let method of paymentMethods" [value]="method">{{ method }}</option>
+                                </select>
+                                <button class="btn-success" (click)="markAsPaid(record.id, pm.value)">
+                                    Pay
+                                </button>
+                            </div>
+                            <span *ngIf="record.status === 'PAID'" class="payment-info">
+                                Via {{ record.payment_method }}
+                            </span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Salary Management Tab -->
+    <div *ngIf="activeTab === 'salary'" class="tab-content">
+        <div class="salary-form">
+            <h2>Create Salary Structure</h2>
+            <form (ngSubmit)="createSalaryStructure()">
+                <div class="form-group">
+                    <label>Employee ID:</label>
+                    <input type="text" [(ngModel)]="salaryForm.emp_id" name="emp_id" required />
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Basic Salary:</label>
+                        <input type="number" [(ngModel)]="salaryForm.basic_salary" name="basic_salary" required />
+                    </div>
+                    <div class="form-group">
+                        <label>HRA:</label>
+                        <input type="number" [(ngModel)]="salaryForm.hra" name="hra" />
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Transport Allowance:</label>
+                        <input type="number" [(ngModel)]="salaryForm.transport_allowance" name="transport_allowance" />
+                    </div>
+                    <div class="form-group">
+                        <label>Dearness Allowance:</label>
+                        <input type="number" [(ngModel)]="salaryForm.dearness_allowance" name="dearness_allowance" />
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Medical Allowance:</label>
+                        <input type="number" [(ngModel)]="salaryForm.medical_allowance" name="medical_allowance" />
+                    </div>
+                    <div class="form-group">
+                        <label>Special Allowance:</label>
+                        <input type="number" [(ngModel)]="salaryForm.special_allowance" name="special_allowance" />
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Other Allowances:</label>
+                    <input type="number" [(ngModel)]="salaryForm.other_allowances" name="other_allowances" />
+                </div>
+
+                <div class="gross-salary">
+                    <strong>Gross Salary: {{ formatCurrency(calculateGrossSalary()) }}</strong>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">Create Salary Structure</button>
+                    <button type="button" class="btn-secondary" (click)="resetSalaryForm()">Reset</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Overtime Approvals Tab -->
+    <div *ngIf="activeTab === 'overtime'" class="tab-content">
+        <h2>Pending Overtime Approvals</h2>
+
+        <div *ngIf="pendingOvertimeApprovals.length === 0" class="empty-state">
+            <p>No pending overtime approvals</p>
+        </div>
+
+        <div *ngIf="pendingOvertimeApprovals.length > 0" class="overtime-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Employee ID</th>
+                        <th>Date</th>
+                        <th>Regular Hours</th>
+                        <th>Actual Hours</th>
+                        <th>Overtime Hours</th>
+                        <th>Overtime Amount</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let ot of pendingOvertimeApprovals">
+                        <td>{{ ot.emp_id }}</td>
+                        <td>{{ ot.date | date:'dd/MM/yyyy' }}</td>
+                        <td>{{ ot.regular_hours }}</td>
+                        <td>{{ ot.actual_hours }}</td>
+                        <td class="overtime-hours">{{ ot.overtime_hours }}</td>
+                        <td>{{ formatCurrency(ot.overtime_amount) }}</td>
+                        <td class="actions">
+                            <button class="btn-success" (click)="approveOvertime(ot.id)">Approve</button>
+                            <button class="btn-danger" (click)="rejectOvertime(ot.id)">Reject</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- My Payslips Tab (Employee View) -->
+    <div *ngIf="activeTab === 'my-payslips'" class="tab-content">
+        <h2>My Salary & Payslips</h2>
+
+        <!-- Active Salary Structure Card -->
+        <div *ngIf="!loading && activeSalary" class="salary-structure-card">
+            <h3>Current Salary Structure</h3>
+            <div class="salary-grid">
+                <div class="salary-item">
+                    <span>Basic Salary</span>
+                    <strong>{{ formatCurrency(activeSalary.basic_salary) }}</strong>
+                </div>
+                <div class="salary-item">
+                    <span>HRA</span>
+                    <strong>{{ formatCurrency(activeSalary.hra) }}</strong>
+                </div>
+                <div class="salary-item">
+                    <span>Dearness Allowance</span>
+                    <strong>{{ formatCurrency(activeSalary.dearness_allowance) }}</strong>
+                </div>
+                <div class="salary-item">
+                    <span>Transport Allowance</span>
+                    <strong>{{ formatCurrency(activeSalary.transport_allowance) }}</strong>
+                </div>
+                <div class="salary-item">
+                    <span>Medical Allowance</span>
+                    <strong>{{ formatCurrency(activeSalary.medical_allowance) }}</strong>
+                </div>
+                <div class="salary-item">
+                    <span>Special Allowance</span>
+                    <strong>{{ formatCurrency(activeSalary.special_allowance) }}</strong>
+                </div>
+                <div class="salary-item">
+                    <span>Other Allowances</span>
+                    <strong>{{ formatCurrency(activeSalary.other_allowances) }}</strong>
+                </div>
+                <div class="salary-item total">
+                    <span>Gross Salary</span>
+                    <strong>{{ formatCurrency(activeSalary.gross_salary) }}</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- Empty State for Salary Structure -->
+        <div *ngIf="!loading && !activeSalary" class="salary-structure-card empty">
+            <h3>Current Salary Structure</h3>
+            <p style="color: #666; font-style: italic;">No active salary structure has been assigned to you yet.</p>
+        </div>
+
+        <h3 *ngIf="!loading">Payslip History</h3>
+
+        <div *ngIf="loading" class="loading">Loading records...</div>
+
+        <div *ngIf="!loading && myPayslips.length === 0" class="empty-state">
+            <p>No pay slips available yet.</p>
+        </div>
+
+        <div *ngIf="!loading && myPayslips.length > 0" class="payroll-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Month/Year</th>
+                        <th>Gross Salary</th>
+                        <th>Deductions</th>
+                        <th>Net Salary</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let record of myPayslips">
+                        <td>{{ getMonthName(record.month) }} {{ record.year }}</td>
+                        <td>{{ formatCurrency(record.gross_salary) }}</td>
+                        <td class="deduction">{{ formatCurrency(record.total_deductions) }}</td>
+                        <td class="net-salary">{{ formatCurrency(record.net_salary) }}</td>
+                        <td>
+                            <span [class]="'status-badge status-' + record.status.toLowerCase()">
+                                {{ record.status }}
+                            </span>
+                        </td>
+                        <td>
+                            <button class="btn-download" (click)="downloadPayslip(record.id, record.emp_id)">
+                                <i data-lucide="download"></i> Download
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
