@@ -265,6 +265,58 @@ tr:hover {
     gap: 5px;
 }
 
+.deduction-management-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+}
+
+.types-list,
+.active-deductions {
+    margin-top: 15px;
+    background: #fdfdfd;
+    border: 1px solid #eee;
+    border-radius: 4px;
+    padding: 10px;
+}
+
+.type-item,
+.deduction-record {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px;
+    border-bottom: 1px solid #f5f5f5;
+}
+
+.type-item:last-child,
+.deduction-record:last-child {
+    border-bottom: none;
+}
+
+.type-item strong,
+.deduction-record strong {
+    font-size: 14px;
+}
+
+.type-item span {
+    font-size: 12px;
+    color: #666;
+}
+
+.btn-sm {
+    padding: 4px 10px;
+    font-size: 11px;
+}
+
+.empty-mini {
+    text-align: center;
+    padding: 20px;
+    color: #999;
+    font-style: italic;
+    font-size: 13px;
+}
+
 /* Forms */
 .salary-form {
     background: white;

@@ -38,6 +38,9 @@ class PayrollService:
         Returns:
             Processed payroll record
         """
+        # Normalize emp_id to uppercase
+        emp_id = emp_id.upper()
+        
         # Check if payroll already exists
         existing = self.payroll_repo.get_by_emp_month_year(emp_id, month, year)
         if existing:
@@ -134,6 +137,8 @@ class PayrollService:
         
         for emp_ded in employee_deductions:
             deduction_type = self.deduction_repo.get_deduction_type_by_id(emp_ded.deduction_type_id)
+            if not deduction_type:
+                continue
             
             if emp_ded.calculation_type == "PERCENTAGE":
                 # Calculate percentage of basic salary

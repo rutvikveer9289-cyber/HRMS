@@ -10,9 +10,14 @@
           <span class="designation">{{ profile.designation }}</span>
           <span class="id-badge">{{ profile.emp_id }}</span>
         </div>
+        <div class="header-actions">
+          <button class="btn-edit" (click)="toggleEdit()" *ngIf="!editing">
+            Edit Profile
+          </button>
+        </div>
       </div>
 
-      <div class="profile-details">
+      <div class="profile-details" *ngIf="!editing">
         <div class="detail-group">
           <label>Office Email</label>
           <p>{{ profile.email }}</p>
@@ -22,12 +27,57 @@
           <p>{{ profile.phone_number }}</p>
         </div>
         <div class="detail-group">
+          <label>Department</label>
+          <p>{{ profile.department || 'N/A' }}</p>
+        </div>
+        <div class="detail-group">
+          <label>Location</label>
+          <p>{{ profile.location || 'N/A' }}</p>
+        </div>
+        <div class="detail-group">
+          <label>Bank Name</label>
+          <p>{{ profile.bank_name || 'Not Set' }}</p>
+        </div>
+        <div class="detail-group">
+          <label>Account Number</label>
+          <p>{{ profile.bank_account_no || 'Not Set' }}</p>
+        </div>
+        <div class="detail-group">
           <label>System Role</label>
           <p>{{ profile.role }}</p>
         </div>
-        <div class="detail-group">
-          <label>Member Since</label>
-          <p>{{ profile.joined_at | date : "longDate" }}</p>
+      </div>
+
+      <div class="profile-edit-form" *ngIf="editing">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Full Name</label>
+            <input type="text" [(ngModel)]="editProfile.full_name" />
+          </div>
+          <div class="form-group">
+            <label>Phone Number</label>
+            <input type="text" [(ngModel)]="editProfile.phone_number" />
+          </div>
+          <div class="form-group">
+            <label>Department</label>
+            <input type="text" [(ngModel)]="editProfile.department" />
+          </div>
+          <div class="form-group">
+            <label>Location</label>
+            <input type="text" [(ngModel)]="editProfile.location" />
+          </div>
+          <div class="form-group">
+            <label>Bank Name</label>
+            <input type="text" [(ngModel)]="editProfile.bank_name" placeholder="e.g. HDFC Bank" />
+          </div>
+          <div class="form-group">
+            <label>Account Number</label>
+            <input type="text" [(ngModel)]="editProfile.bank_account_no" placeholder="Enter your A/C number" />
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn-save" (click)="updateProfile()">Save Changes</button>
+          <button class="btn-cancel" (click)="toggleEdit()">Cancel</button>
         </div>
       </div>
     </div>

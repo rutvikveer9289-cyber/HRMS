@@ -49,6 +49,10 @@ export class AttendanceService {
     return this.http.get<any>(`${this.apiUrl}/profile/`);
   }
 
+  updateProfile(data: any): Observable<any> {
+    return this.http.put(`${this.apiUrl}/profile/me`, data);
+  }
+
   getNextId(): Observable<{ next_id: string }> {
     return this.http.get<{ next_id: string }>(`${this.apiUrl}/onboarding/next-id`);
   }

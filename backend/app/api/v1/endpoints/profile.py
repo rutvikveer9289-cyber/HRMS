@@ -18,6 +18,10 @@ class ProfileUpdate(BaseModel):
     full_name: Optional[str] = None
     phone_number: Optional[str] = None
     designation: Optional[str] = None
+    bank_name: Optional[str] = None
+    bank_account_no: Optional[str] = None
+    location: Optional[str] = None
+    department: Optional[str] = None
 
 @router.get("/me")
 @router.get("")  # Alias for /profile/
@@ -37,7 +41,11 @@ async def get_my_profile(
         "phone_number": user.phone_number,
         "designation": user.designation,
         "role": user.role,
-        "status": user.status
+        "status": user.status,
+        "department": user.department,
+        "location": user.location,
+        "bank_name": user.bank_name,
+        "bank_account_no": user.bank_account_no
     }
 
 @router.put("/me")

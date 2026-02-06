@@ -5,6 +5,7 @@ import { PayrollService } from '../../services/payroll.service';
 import { SalaryService } from '../../services/salary.service';
 import { OvertimeService } from '../../services/overtime.service';
 import { AuthService } from '../../services/auth.service';
+import { DeductionService } from '../../services/deduction.service';
 
 @Component({
   selector: 'app-payroll-management',
@@ -30,6 +31,23 @@ export class PayrollManagementComponent implements OnInit {
   processSingleEmpId: string = '';
   paymentMethods: string[] = ['Bank Transfer', 'Cash', 'Check', 'UPI'];
 
+  // Deduction data
+  deductionTypes: any[] = [];
+  employeeDeductions: any[] = [];
+  deductionForm: any = {
+    emp_id: '',
+    deduction_type_id: null,
+    calculation_type: 'FIXED',
+    value: 0,
+    effective_from: new Date().toISOString().split('T')[0]
+  };
+  newDeductionType: any = {
+    name: '',
+    description: '',
+    calculation_type: 'FIXED',
+    default_value: 0
+  };
+
   // Salary data
   salaryForm: any = {
     emp_id: '',
@@ -50,7 +68,8 @@ export class PayrollManagementComponent implements OnInit {
     private payrollService: PayrollService,
     private salaryService: SalaryService,
     private overtimeService: OvertimeService,
-    private authService: AuthService
+    private authService: AuthService,
+    private deductionService: DeductionService
   ) { }
 
   ngOnInit(): void {
@@ -73,6 +92,8 @@ export class PayrollManagementComponent implements OnInit {
       this.loadPayrollRecords();
     } else if (tab === 'overtime' && this.canManagePayroll) {
       this.loadPendingOvertimeApprovals();
+    } else if (tab === 'deductions' && this.canManagePayroll) {
+      this.loadDeductionTypes();
     } else if (tab === 'my-payslips') {
       this.loadMyPayslips();
     }
@@ -271,6 +292,60 @@ export class PayrollManagementComponent implements OnInit {
           console.error('Error rejecting overtime:', err);
           alert('Error rejecting overtime');
         }
+      });
+    }
+  }
+
+  // Deduction Methods
+  loadDeductionTypes(): void {
+    this.deductionService.getDeductionTypes().subscribe({
+      next: (data) => this.deductionTypes = data,
+      error: (err) => console.error('Error loading deduction types:', err)
+    });
+  }
+
+  createDeductionType(): void {
+    if (!this.newDeductionType.name) return;
+    this.deductionService.createDeductionType(this.newDeductionType).subscribe({
+      next: () => {
+        alert('Deduction type created');
+        this.loadDeductionTypes();
+        this.newDeductionType = { name: '', description: '', calculation_type: 'FIXED', default_value: 0 };
+      },
+      error: (err) => alert('Error: ' + (err.error?.detail || 'Unknown error'))
+    });
+  }
+
+  assignDeduction(): void {
+    if (!this.deductionForm.emp_id || !this.deductionForm.deduction_type_id) {
+      alert('Please fill employee ID and select deduction type');
+      return;
+    }
+    this.deductionService.assignDeduction(this.deductionForm).subscribe({
+      next: () => {
+        alert('Deduction assigned successfully');
+        this.loadEmployeeDeductions();
+      },
+      error: (err) => alert('Error: ' + (err.error?.detail || 'Unknown error'))
+    });
+  }
+
+  loadEmployeeDeductions(): void {
+    if (!this.deductionForm.emp_id) return;
+    this.deductionService.getEmployeeDeductions(this.deductionForm.emp_id).subscribe({
+      next: (data) => this.employeeDeductions = data,
+      error: (err) => console.error('Error loading employee deductions:', err)
+    });
+  }
+
+  deactivateDeduction(id: number): void {
+    if (confirm('Deactivate this deduction?')) {
+      this.deductionService.deactivateDeduction(id).subscribe({
+        next: () => {
+          alert('Deduction deactivated');
+          this.loadEmployeeDeductions();
+        },
+        error: (err) => alert('Error deactivating deduction')
       });
     }
   }
