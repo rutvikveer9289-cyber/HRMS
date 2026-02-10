@@ -1,29 +1,45 @@
+<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@500&display=swap" rel="stylesheet">
 <div class="app-layout-wrapper" *ngIf="authService.isLoggedIn()">
-  <!-- Main Header -->
+  <!-- Top Header -->
   <header class="app-header">
     <div class="header-left">
-      <h1 class="app-brand" routerLink="/dashboard" style="cursor: pointer">
-        RBIS <span>HR Management System</span>
-      </h1>
+      <!-- Menu Toggle Button -->
+      <button class="menu-toggle-btn" (click)="toggleSidebar()" [class.active]="sidebarOpen">
+        <i data-lucide="menu"></i>
+      </button>
+
+      <!-- Logo -->
+      <div class="brand-wrapper" routerLink="/dashboard" style="cursor: pointer">
+        <svg width="200" height="55" viewBox="0 0 200 55" class="logo-svg">
+          <defs>
+            <pattern id="stripe-pattern" x="0" y="0" width="100%" height="6" patternUnits="userSpaceOnUse">
+              <rect x="0" y="0" width="100%" height="3.5" fill="#1976d2" />
+            </pattern>
+          </defs>
+          <text x="0" y="32" class="logo-text" fill="url(#stripe-pattern)" font-family="'Arial Black', sans-serif"
+            font-size="40" font-weight="900" letter-spacing="-1.5">RBIS</text>
+          <text x="2" y="50" class="logo-tagline-svg" font-family="'Dancing Script', cursive" font-size="14"
+            fill="#334155" letter-spacing="0.5">Your Vision, Our Innovation</text>
+        </svg>
+      </div>
     </div>
+
     <div class="header-right">
-      <div class="user-profile-wrapper">
-        <div class="user-profile" (click)="toggleProfileMenu()">
-          <div class="user-info">
-            <span class="user-name">{{ getUserDisplayName(currentUser) }}</span>
-            <span class="user-role">{{ currentUser?.role }}</span>
-          </div>
-          <div class="user-avatar-circle">
-            {{ getInitials(currentUser) }}
-          </div>
+      <!-- User Profile -->
+      <div class="header-action-item profile-trigger" (click)="toggleProfileMenu()" [class.active]="profileMenuOpen">
+        <div class="user-avatar-circle">
+          {{ getInitials(currentUser) }}
         </div>
 
-        <!-- Profile Dropdown (Logout moves here) -->
         <div class="profile-dropdown" *ngIf="profileMenuOpen">
+          <div class="dropdown-user-info">
+            <div class="u-name">{{ getUserDisplayName(currentUser) }}</div>
+            <div class="u-role">{{ currentUser?.role }}</div>
+          </div>
+          <hr />
           <a routerLink="/profile" (click)="profileMenuOpen = false" class="dropdown-item">
             <i data-lucide="user"></i> My Profile
           </a>
-          <hr />
           <button class="btn-logout-dropdown" (click)="logout()">
             <i data-lucide="log-out"></i>
             <span>Logout</span>
@@ -33,64 +49,82 @@
     </div>
   </header>
 
-  <!-- Horizontal Top Navigation (Restored Design) -->
-  <nav class="hrms-top-nav">
-    <div class="nav-container">
-      <a routerLink="/dashboard" routerLinkActive="active" class="nav-item">
-        <i data-lucide="layout-dashboard"></i> Dashboard
-      </a>
-      <a routerLink="/analytics" routerLinkActive="active" class="nav-item">
-        <i data-lucide="bar-chart-2"></i> Analytics
-      </a>
-      <a routerLink="/attendance-operations" routerLinkActive="active" class="nav-item" *ngIf="isAdmin">
-        <i data-lucide="settings"></i> Operations
-      </a>
-      <a routerLink="/onboarding" routerLinkActive="active" class="nav-item" *ngIf="isHr">
-        <i data-lucide="user-plus"></i> OnBoarding
-      </a>
-      <a routerLink="/records" routerLinkActive="active" class="nav-item" *ngIf="isCeo">
-        <i data-lucide="archive"></i> Records
-      </a>
-      <a routerLink="/employee-management" routerLinkActive="active" class="nav-item" *ngIf="isHr">
-        <i data-lucide="users"></i> Master Table
-      </a>
-      <a routerLink="/leave-management" routerLinkActive="active" class="nav-item">
-        <i data-lucide="calendar"></i> Leaves
-      </a>
-      <a routerLink="/payroll-management" routerLinkActive="active" class="nav-item">
-        <i data-lucide="dollar-sign"></i> Payroll
-      </a>
-      <!-- <a routerLink="/notices" routerLinkActive="active" class="nav-item">
-        <i data-lucide="bell"></i> Notices
-      </a>
-      <a
-        routerLink="/admin/notices"
-        routerLinkActive="active"
-        class="nav-item"
-        *ngIf="isHr"
-      >
-        <i data-lucide="megaphone"></i> Notice Mgmt
-      </a> -->
-    </div>
-  </nav>
+  <!-- Main Layout with Sidebar -->
+  <div class="app-main-layout">
+    <!-- Sidebar Overlay (for mobile/closing) -->
+    <div class="sidebar-overlay" *ngIf="sidebarOpen" (click)="toggleSidebar()"></div>
 
-  <main class="page-content-container">
-    <router-outlet></router-outlet>
-  </main>
+    <!-- Left Sidebar Navigation -->
+    <aside class="sidebar-nav" [class.open]="sidebarOpen">
+      <!-- User Profile Card in Sidebar -->
+      <div class="sidebar-profile-card">
+        <div class="sidebar-avatar">
+          {{ getInitials(currentUser) }}
+        </div>
+        <div class="sidebar-user-info">
+          <div class="sidebar-username">{{ getUserDisplayName(currentUser) }}</div>
+          <div class="sidebar-role">{{ currentUser?.role }}</div>
+        </div>
+      </div>
+
+      <!-- Navigation Items -->
+      <nav class="sidebar-menu">
+        <a routerLink="/analytics" routerLinkActive="active" class="sidebar-item" (click)="sidebarOpen = false"
+          title="Analytics">
+          <i data-lucide="bar-chart-2"></i>
+          <span>Analytics</span>
+        </a>
+        <a *ngIf="isHr" routerLink="/employee-management" routerLinkActive="active" class="sidebar-item"
+          (click)="sidebarOpen = false" title="Employees">
+          <i data-lucide="users"></i>
+          <span>Employees</span>
+        </a>
+        <a *ngIf="isAdmin" routerLink="/attendance-operations" routerLinkActive="active" class="sidebar-item"
+          (click)="sidebarOpen = false" title="Operations">
+          <i data-lucide="settings"></i>
+          <span>Operations</span>
+        </a>
+        <a *ngIf="isHr" routerLink="/onboarding" routerLinkActive="active" class="sidebar-item"
+          (click)="sidebarOpen = false" title="Onboarding">
+          <i data-lucide="user-plus"></i>
+          <span>Onboarding</span>
+        </a>
+        <a routerLink="/leave-management" routerLinkActive="active" class="sidebar-item" (click)="sidebarOpen = false"
+          title="Leaves">
+          <i data-lucide="calendar"></i>
+          <span>Leaves</span>
+        </a>
+        <a routerLink="/payroll-management" routerLinkActive="active" class="sidebar-item" (click)="sidebarOpen = false"
+          title="Payroll">
+          <i data-lucide="credit-card"></i>
+          <span>Payroll</span>
+        </a>
+        <a *ngIf="isHr || isCeo" routerLink="/records" routerLinkActive="active" class="sidebar-item"
+          (click)="sidebarOpen = false" title="Records">
+          <i data-lucide="clipboard-list"></i>
+          <span>Records</span>
+        </a>
+      </nav>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="page-content-container">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
 </div>
 
-<!-- Non-logged in view (Login/Signup) -->
+<!-- Login/Signup View -->
 <div *ngIf="!authService.isLoggedIn()">
   <router-outlet></router-outlet>
 </div>
 
-<!-- Alerts / Toast Container (Fixed position) -->
+<!-- Global Notifications -->
 <div class="alerts-container">
   <div *ngFor="let alert of alerts" class="alert-toast" [class]="alert.type">
     <div class="alert-icon">
       <i *ngIf="alert.type === 'success'" class="lucide-check-circle"></i>
       <i *ngIf="alert.type === 'error'" class="lucide-alert-circle"></i>
-      <i *ngIf="alert.type === 'info'" class="lucide-info"></i>
     </div>
     <span class="alert-msg">{{ alert.message }}</span>
     <button class="alert-close" (click)="removeAlert(alert.id)">&times;</button>

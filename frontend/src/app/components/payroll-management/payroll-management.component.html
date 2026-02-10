@@ -26,6 +26,51 @@
 
     <!-- Payroll Processing Tab -->
     <div *ngIf="activeTab === 'payroll'" class="tab-content">
+        <!-- Payment Summary Dashboard -->
+        <div class="payment-summary-grid" *ngIf="!loading">
+            <div class="summary-card total">
+                <div class="summary-icon">
+                    <i data-lucide="users"></i>
+                </div>
+                <div class="summary-content">
+                    <span class="summary-label">Total Employees</span>
+                    <span class="summary-value">{{ payrollRecords.length }}</span>
+                </div>
+            </div>
+
+            <div class="summary-card paid">
+                <div class="summary-icon">
+                    <i data-lucide="check-circle"></i>
+                </div>
+                <div class="summary-content">
+                    <span class="summary-label">Paid</span>
+                    <span class="summary-value">{{ getPaidCount() }}</span>
+                    <span class="summary-sublabel">{{ formatCurrency(getTotalPaidAmount()) }}</span>
+                </div>
+            </div>
+
+            <div class="summary-card pending">
+                <div class="summary-icon">
+                    <i data-lucide="clock"></i>
+                </div>
+                <div class="summary-content">
+                    <span class="summary-label">Pending Payment</span>
+                    <span class="summary-value">{{ getPendingCount() }}</span>
+                    <span class="summary-sublabel">{{ formatCurrency(getTotalPendingAmount()) }}</span>
+                </div>
+            </div>
+
+            <div class="summary-card amount">
+                <div class="summary-icon">
+                    <i data-lucide="indian-rupee"></i>
+                </div>
+                <div class="summary-content">
+                    <span class="summary-label">Total Payroll</span>
+                    <span class="summary-value">{{ formatCurrency(getTotalPayrollAmount()) }}</span>
+                </div>
+            </div>
+        </div>
+
         <div class="controls">
             <div class="month-selector">
                 <label>Month:</label>
@@ -57,57 +102,96 @@
             <p>Click "Process All Payroll" to generate payroll for all employees</p>
         </div>
 
-        <div *ngIf="!loading && payrollRecords.length > 0" class="payroll-table">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Employee ID</th>
-                        <th>Gross Salary</th>
-                        <th>Deductions</th>
-                        <th>Overtime</th>
-                        <th>Net Salary</th>
-                        <th>Status</th>
-                        <th>Bank Info</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr *ngFor="let record of payrollRecords">
-                        <td>{{ record.emp_id }}</td>
-                        <td>{{ formatCurrency(record.gross_salary) }}</td>
-                        <td class="deduction">{{ formatCurrency(record.total_deductions) }}</td>
-                        <td>{{ formatCurrency(record.overtime_amount) }}</td>
-                        <td class="net-salary">{{ formatCurrency(record.net_salary) }}</td>
-                        <td>
-                            <span [class]="'status-badge status-' + record.status.toLowerCase()">
-                                {{ record.status }}
-                            </span>
-                        </td>
-                        <td>
-                            <div class="bank-details" *ngIf="record.owner">
-                                <strong>{{ record.owner.bank_name || 'No Bank' }}</strong>
-                                <span>{{ record.owner.bank_account_no || 'No Acc' }}</span>
-                            </div>
-                        </td>
-                        <td class="actions">
-                            <button class="btn-download" (click)="downloadPayslip(record.id, record.emp_id)">
-                                Download Payslip
-                            </button>
-                            <div *ngIf="record.status !== 'PAID'" class="pay-action">
-                                <select #pm>
-                                    <option *ngFor="let method of paymentMethods" [value]="method">{{ method }}</option>
-                                </select>
-                                <button class="btn-success" (click)="markAsPaid(record.id, pm.value)">
-                                    Pay
+        <div *ngIf="!loading && payrollRecords.length > 0" class="table-wrapper">
+            <!-- Filter and Bulk Actions Bar -->
+            <div class="table-actions-bar">
+                <div class="filter-buttons">
+                    <button [class.active]="paymentFilter === 'all'" (click)="paymentFilter = 'all'" class="filter-btn">
+                        All ({{ payrollRecords.length }})
+                    </button>
+                    <button [class.active]="paymentFilter === 'paid'" (click)="paymentFilter = 'paid'"
+                        class="filter-btn">
+                        Paid ({{ getPaidCount() }})
+                    </button>
+                    <button [class.active]="paymentFilter === 'pending'" (click)="paymentFilter = 'pending'"
+                        class="filter-btn">
+                        Pending ({{ getPendingCount() }})
+                    </button>
+                </div>
+
+                <div class="bulk-actions" *ngIf="getSelectedCount() > 0">
+                    <span class="selection-count">{{ getSelectedCount() }} selected</span>
+                    <select #bulkPaymentMethod class="bulk-payment-select">
+                        <option *ngFor="let method of paymentMethods" [value]="method">{{ method }}</option>
+                    </select>
+                    <button class="btn-success" (click)="bulkMarkAsPaid(bulkPaymentMethod.value)">
+                        Pay Selected
+                    </button>
+                    <button class="btn-secondary btn-sm" (click)="clearSelection()">Clear</button>
+                </div>
+            </div>
+
+            <div class="payroll-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;">
+                                <input type="checkbox" (change)="toggleSelectAll($event)" [checked]="isAllSelected()" />
+                            </th>
+                            <th>Emp ID</th>
+                            <th>Gross</th>
+                            <th>Deduct.</th>
+                            <th>OT</th>
+                            <th>Net Salary</th>
+                            <th>Status</th>
+                            <th>Bank</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let record of getFilteredRecords()" [class.selected-row]="record.selected">
+                            <td>
+                                <input type="checkbox" [(ngModel)]="record.selected"
+                                    [disabled]="record.status === 'PAID'" />
+                            </td>
+                            <td><strong>{{ record.emp_id }}</strong></td>
+                            <td>{{ formatCurrency(record.gross_salary) }}</td>
+                            <td class="deduction">-{{ formatCurrency(record.total_deductions) }}</td>
+                            <td class="overtime-amt">+{{ formatCurrency(record.overtime_amount) }}</td>
+                            <td class="net-salary">{{ formatCurrency(record.net_salary) }}</td>
+                            <td>
+                                <span [class]="'status-badge status-' + record.status.toLowerCase()">
+                                    {{ record.status }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="bank-details" *ngIf="record.owner">
+                                    <strong>{{ record.owner.bank_name || 'No Bank' }}</strong>
+                                    <span>{{ record.owner.bank_account_no || 'No Acc' }}</span>
+                                </div>
+                            </td>
+                            <td class="actions">
+                                <button class="btn-icon" (click)="downloadPayslip(record.id, record.emp_id)"
+                                    title="Download Payslip">
+                                    <i data-lucide="download"></i>
                                 </button>
-                            </div>
-                            <span *ngIf="record.status === 'PAID'" class="payment-info">
-                                Via {{ record.payment_method }}
-                            </span>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+                                <div *ngIf="record.status !== 'PAID'" class="pay-action-inline">
+                                    <select #pm class="compact-select">
+                                        <option *ngFor="let method of paymentMethods" [value]="method">{{ method }}
+                                        </option>
+                                    </select>
+                                    <button class="btn-success btn-sm" (click)="markAsPaid(record.id, pm.value)">
+                                        Pay
+                                    </button>
+                                </div>
+                                <span *ngIf="record.status === 'PAID'" class="payment-info">
+                                    <i data-lucide="check-circle"></i> {{ record.payment_method }}
+                                </span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 

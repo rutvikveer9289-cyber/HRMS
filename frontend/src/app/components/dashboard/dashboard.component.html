@@ -15,19 +15,9 @@
       <div class="filter-group date-range">
         <label><i data-lucide="calendar"></i> Date Range</label>
         <div class="range-inputs">
-          <input
-            type="date"
-            [(ngModel)]="fromDate"
-            (change)="applyFilters()"
-            placeholder="From"
-          />
+          <input type="date" [(ngModel)]="fromDate" (change)="applyFilters()" placeholder="From" />
           <span class="range-sep">to</span>
-          <input
-            type="date"
-            [(ngModel)]="toDate"
-            (change)="applyFilters()"
-            placeholder="To"
-          />
+          <input type="date" [(ngModel)]="toDate" (change)="applyFilters()" placeholder="To" />
         </div>
       </div>
 
@@ -35,26 +25,15 @@
       <div class="filter-group search-context" *ngIf="canViewAll">
         <label><i data-lucide="user-search"></i> Context Search</label>
         <div class="search-input-wrapper">
-          <input
-            type="text"
-            [(ngModel)]="searchTerm"
-            placeholder="Search Emp ID or Name..."
-            (keyup.enter)="applyFilters()"
-          />
-          <i
-            data-lucide="search"
-            class="search-icon"
-            (click)="applyFilters()"
-            style="cursor: pointer; pointer-events: auto"
-          ></i>
+          <input type="text" [(ngModel)]="searchTerm" placeholder="Search Emp ID or Name..."
+            (keyup.enter)="applyFilters()" />
+          <i data-lucide="search" class="search-icon" (click)="applyFilters()"
+            style="cursor: pointer; pointer-events: auto"></i>
         </div>
       </div>
 
-      <button
-        class="reset-btn"
-        (click)="resetFilters()"
-        *ngIf="fromDate || toDate || searchTerm || (canViewAll && selectedEmp)"
-      >
+      <button class="reset-btn" (click)="resetFilters()"
+        *ngIf="fromDate || toDate || searchTerm || (canViewAll && selectedEmp)">
         Clear
       </button>
     </div>
@@ -67,34 +46,23 @@
           <span class="p-id">({{ activeEmployee.EmpID }})</span>
         </div>
       </div>
-      <div class="profile-badge">Individual Statistics Dashboard</div>
+
     </div>
 
     <!-- Stats Section (Conditionally Hidden) -->
-    <app-stats-grid
-      *ngIf="!loading && hasData && showStatsCards"
-      [stats]="stats"
+    <app-stats-grid *ngIf="!loading && hasData && showStatsCards" [stats]="stats"
       (onStatusClick)="viewStatusDetails($event)">
     </app-stats-grid>
 
     <!-- Charts Grid (Restored) -->
     <div class="charts-grid" *ngIf="!loading && hasData">
-      <div
-        class="chart-card"
-        [class.large]="showTrendChart"
-        *ngIf="showTrendChart"
-      >
+      <div class="chart-card" [class.large]="showTrendChart" *ngIf="showTrendChart">
         <div class="chart-header">
           <h3>Presence Trend</h3>
           <p>Daily employee attendance overview</p>
         </div>
         <div class="chart-box">
-          <canvas
-            baseChart
-            [data]="barData"
-            [options]="barChartOptions"
-            type="bar"
-          ></canvas>
+          <canvas baseChart [data]="barData" [options]="barChartOptions" type="bar"></canvas>
         </div>
       </div>
 
@@ -104,12 +72,7 @@
           <p>Average working hours over time</p>
         </div>
         <div class="chart-box">
-          <canvas
-            baseChart
-            [data]="lineData"
-            [options]="lineChartOptions"
-            type="line"
-          ></canvas>
+          <canvas baseChart [data]="lineData" [options]="lineChartOptions" type="line"></canvas>
         </div>
       </div>
 
@@ -119,12 +82,7 @@
           <p>Presence vs Absence breakdown</p>
         </div>
         <div class="chart-box small">
-          <canvas
-            baseChart
-            [data]="pieData"
-            [options]="pieChartOptions"
-            type="pie"
-          ></canvas>
+          <canvas baseChart [data]="pieData" [options]="pieChartOptions" type="pie"></canvas>
         </div>
       </div>
     </div>
@@ -157,7 +115,7 @@
                 <td>
                   <span class="status-badge" [class]="emp.status | lowercase">{{
                     emp.status
-                  }}</span>
+                    }}</span>
                 </td>
                 <td *ngIf="!hideTimings">{{ emp.in || "--:--" }}</td>
                 <td *ngIf="!hideTimings">{{ emp.out || "--:--" }}</td>

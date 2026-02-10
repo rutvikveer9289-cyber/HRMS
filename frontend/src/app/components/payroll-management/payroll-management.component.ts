@@ -64,6 +64,9 @@ export class PayrollManagementComponent implements OnInit {
   overtimeRecords: any[] = [];
   pendingOvertimeApprovals: any[] = [];
 
+  // Payment tracking
+  paymentFilter: string = 'all'; // 'all', 'paid', 'pending'
+
   constructor(
     private payrollService: PayrollService,
     private salaryService: SalaryService,
@@ -82,6 +85,120 @@ export class PayrollManagementComponent implements OnInit {
     } else {
       this.activeTab = 'my-payslips';
       this.loadMyPayslips();
+    }
+  }
+
+  // Payment Summary Methods
+  getPaidCount(): number {
+    return this.payrollRecords.filter(r => r.status === 'PAID').length;
+  }
+
+  getPendingCount(): number {
+    return this.payrollRecords.filter(r => r.status !== 'PAID').length;
+  }
+
+  getTotalPaidAmount(): number {
+    return this.payrollRecords
+      .filter(r => r.status === 'PAID')
+      .reduce((sum, r) => sum + (r.net_salary || 0), 0);
+  }
+
+  getTotalPendingAmount(): number {
+    return this.payrollRecords
+      .filter(r => r.status !== 'PAID')
+      .reduce((sum, r) => sum + (r.net_salary || 0), 0);
+  }
+
+  getTotalPayrollAmount(): number {
+    return this.payrollRecords.reduce((sum, r) => sum + (r.net_salary || 0), 0);
+  }
+
+  // Filter Methods
+  getFilteredRecords(): any[] {
+    if (this.paymentFilter === 'paid') {
+      return this.payrollRecords.filter(r => r.status === 'PAID');
+    } else if (this.paymentFilter === 'pending') {
+      return this.payrollRecords.filter(r => r.status !== 'PAID');
+    }
+    return this.payrollRecords;
+  }
+
+  // Bulk Selection Methods
+  toggleSelectAll(event: any): void {
+    const checked = event.target.checked;
+    this.payrollRecords.forEach(record => {
+      if (record.status !== 'PAID') {
+        record.selected = checked;
+      }
+    });
+  }
+
+  isAllSelected(): boolean {
+    const unpaidRecords = this.payrollRecords.filter(r => r.status !== 'PAID');
+    return unpaidRecords.length > 0 && unpaidRecords.every(r => r.selected);
+  }
+
+  getSelectedCount(): number {
+    return this.payrollRecords.filter(r => r.selected).length;
+  }
+
+  clearSelection(): void {
+    this.payrollRecords.forEach(r => r.selected = false);
+  }
+
+  bulkMarkAsPaid(paymentMethod: string): void {
+    const selectedRecords = this.payrollRecords.filter(r => r.selected && r.status !== 'PAID');
+
+    if (selectedRecords.length === 0) {
+      alert('No records selected');
+      return;
+    }
+
+    // Check if Razorpay payment possible
+    const useRazorpay = ['Bank Transfer', 'IMPS', 'NEFT', 'RTGS'].includes(paymentMethod)
+      && confirm(`Do you want to initiate REAL PAYMENT for ${selectedRecords.length} employees via Razorpay?\n\nClick OK for Real Payment (Money will be transferred)\nClick Cancel for Manual Tracking only`);
+
+    if (useRazorpay) {
+      // Real Payment via Razorpay
+      const payrollIds = selectedRecords.map(r => r.id);
+      const mode = 'IMPS'; // Default or derive from paymentMethod
+
+      this.loading = true;
+      this.payrollService.initiateBulkPayment(payrollIds, mode).subscribe({
+        next: (result) => {
+          alert(`Razorpay Payment Initiated!\nSuccessful: ${result.successful}\nFailed: ${result.failed}\nMessage: ${result.message}`);
+          this.loadPayrollRecords();
+          this.clearSelection();
+          this.loading = false;
+        },
+        error: (err) => {
+          console.error('Razorpay Error:', err);
+          alert('Razorpay Payment Failed: ' + (err.error?.detail || err.message));
+          this.loading = false;
+        }
+      });
+    } else {
+      // Manual Tracking (Old Way)
+      if (confirm(`Mark ${selectedRecords.length} employees as manually PAID via ${paymentMethod}?`)) {
+        const paymentDate = new Date().toISOString().split('T')[0];
+        let completed = 0;
+
+        selectedRecords.forEach(record => {
+          this.payrollService.updatePaymentStatus(record.id, 'PAID', paymentDate, paymentMethod).subscribe({
+            next: () => {
+              completed++;
+              if (completed === selectedRecords.length) {
+                alert(`Successfully marked ${completed} payments as PAID (Manual)`);
+                this.loadPayrollRecords();
+                this.clearSelection();
+              }
+            },
+            error: (err) => {
+              console.error('Error updating payment:', err);
+            }
+          });
+        });
+      }
     }
   }
 
@@ -200,17 +317,37 @@ export class PayrollManagementComponent implements OnInit {
   }
 
   markAsPaid(payrollId: number, paymentMethod: string = 'Bank Transfer'): void {
-    const paymentDate = new Date().toISOString().split('T')[0];
-    this.payrollService.updatePaymentStatus(payrollId, 'PAID', paymentDate, paymentMethod).subscribe({
-      next: () => {
-        alert('Payment status updated to PAID via ' + paymentMethod);
-        this.loadPayrollRecords();
-      },
-      error: (err) => {
-        console.error('Error updating status:', err);
-        alert('Error updating payment status');
-      }
-    });
+    const useRazorpay = ['Bank Transfer', 'IMPS', 'NEFT', 'RTGS'].includes(paymentMethod)
+      && confirm('Do you want to initiate REAL PAYMENT via Razorpay?\n\nClick OK for Real Payment\nClick Cancel for Manual Tracking');
+
+    if (useRazorpay) {
+      this.loading = true;
+      this.payrollService.initiateSinglePayment(payrollId, 'IMPS').subscribe({
+        next: (result) => {
+          alert(`Razorpay Payment Successful!\nTransaction ID: ${result.transaction_id}`);
+          this.loadPayrollRecords();
+          this.loading = false;
+        },
+        error: (err) => {
+          console.error('Razorpay Error:', err);
+          alert('Razorpay Payment Failed: ' + (err.error?.detail || err.message));
+          this.loading = false;
+        }
+      });
+    } else {
+      // Manual Tracking
+      const paymentDate = new Date().toISOString().split('T')[0];
+      this.payrollService.updatePaymentStatus(payrollId, 'PAID', paymentDate, paymentMethod).subscribe({
+        next: () => {
+          alert('Payment status updated to PAID via ' + paymentMethod + ' (Manual)');
+          this.loadPayrollRecords();
+        },
+        error: (err) => {
+          console.error('Error updating status:', err);
+          alert('Error updating payment status');
+        }
+      });
+    }
   }
 
   // Salary Methods

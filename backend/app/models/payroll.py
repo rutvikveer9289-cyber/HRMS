@@ -46,5 +46,7 @@ class PayrollRecord(Base):
     processed_by = Column(String(50), nullable=True)
     payment_date = Column(Date, nullable=True)
     payment_method = Column(String(50), nullable=True)  # Bank Transfer, Cash, etc.
+    transaction_id = Column(String(100), nullable=True)  # Razorpay payout ID
+    utr_number = Column(String(50), nullable=True)  # Unique Transaction Reference from bank
     remarks = Column(String(500), nullable=True)
     created_at = Column(DateTime, default=get_ist_now)

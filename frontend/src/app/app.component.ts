@@ -22,6 +22,8 @@ export class AppComponent implements OnInit {
   isCeo = false;
   hasDashboardData = false;
   profileMenuOpen = false;
+  mainMenuOpen = false;
+  sidebarOpen = false;
   currentUser: any = null;
 
   constructor(
@@ -29,7 +31,7 @@ export class AppComponent implements OnInit {
     public attendanceService: AttendanceService,
     public authService: AuthService,
     public router: Router
-  ) {}
+  ) { }
 
   ngOnInit() {
     this.notificationService.alerts$.subscribe((alerts: Alert[]) => {
@@ -70,6 +72,23 @@ export class AppComponent implements OnInit {
 
   toggleProfileMenu() {
     this.profileMenuOpen = !this.profileMenuOpen;
+    if (this.profileMenuOpen) {
+      this.mainMenuOpen = false;
+      this.sidebarOpen = false;
+    }
+  }
+
+  toggleMainMenu() {
+    this.mainMenuOpen = !this.mainMenuOpen;
+    if (this.mainMenuOpen) this.profileMenuOpen = false;
+  }
+
+  toggleSidebar() {
+    this.sidebarOpen = !this.sidebarOpen;
+    if (this.sidebarOpen) {
+      this.profileMenuOpen = false;
+      this.mainMenuOpen = false;
+    }
   }
 
   logout() {

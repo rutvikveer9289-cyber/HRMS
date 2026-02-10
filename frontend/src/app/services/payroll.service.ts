@@ -42,4 +42,19 @@ export class PayrollService {
     getEmployeePayrollHistory(empId: string, limit: number = 12): Observable<any[]> {
         return this.http.get<any[]>(`${this.apiUrl}/employee/${empId}?limit=${limit}`);
     }
+
+    // Razorpay Methods
+    initiateSinglePayment(payrollId: number, mode: string = 'IMPS'): Observable<any> {
+        return this.http.post(`${environment.apiUrl}/razorpay/payout/single`, {
+            payroll_id: payrollId,
+            mode: mode
+        });
+    }
+
+    initiateBulkPayment(payrollIds: number[], mode: string = 'IMPS'): Observable<any> {
+        return this.http.post(`${environment.apiUrl}/razorpay/payout/bulk`, {
+            payroll_ids: payrollIds,
+            mode: mode
+        });
+    }
 }
