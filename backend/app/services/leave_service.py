@@ -181,6 +181,39 @@ class LeaveService:
     def get_my_requests(self, emp_id: str) -> List:
         """Get all leave requests for employee"""
         return self.leave_repo.get_requests_by_emp(emp_id)
+
+    def delete_request(self, request_id: int, user: Employee) -> Dict:
+        """
+        Delete a leave request
+        
+        Args:
+            request_id: Request ID
+            user: Current user
+            
+        Returns:
+            Success message
+        """
+        request = self.leave_repo.get_request_by_id(request_id)
+        if not request:
+            raise HTTPException(status_code=404, detail="Leave request not found")
+        
+        # Check permissions
+        is_admin = user.role in [UserRole.SUPER_ADMIN, UserRole.CEO]
+        if not is_admin and request.emp_id != user.emp_id:
+            raise HTTPException(status_code=403, detail="Not authorized to delete this request")
+        
+        # Check status (can only delete PENDING unless admin)
+        if not is_admin and request.status != "PENDING":
+            raise HTTPException(status_code=400, detail="Cannot delete a request that is already processed (Approved/Rejected)")
+        
+        # Delete associated logs first (if any)
+        from app.models.leave import LeaveApprovalLog
+        self.db.query(LeaveApprovalLog).filter(LeaveApprovalLog.request_id == request_id).delete()
+        
+        self.leave_repo.delete_request(request)
+        self.leave_repo.commit()
+        
+        return {"message": "Leave request deleted successfully"}
     
     def get_pending_requests_for_hr(self) -> List:
         """Get pending requests for HR approval"""
@@ -286,11 +319,16 @@ class LeaveService:
             raise HTTPException(status_code=400, detail="Start date cannot be after end date")
     
     def _calculate_work_days(self, start: date, end: date) -> int:
-        """Calculate work days (excluding weekends)"""
+        """Calculate work days (excluding weekends and holidays)"""
+        # Get holidays in this range
+        holidays = self.leave_repo.get_holidays_in_range(start, end)
+        holiday_dates = {h.date for h in holidays}
+        
         days = 0
         curr = start
         while curr <= end:
-            if curr.weekday() < 5:  # Monday to Friday
+            # Check if it's a weekday AND not a holiday
+            if curr.weekday() < 5 and curr not in holiday_dates:
                 days += 1
             curr += timedelta(days=1)
         return days

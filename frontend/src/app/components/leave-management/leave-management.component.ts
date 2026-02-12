@@ -14,12 +14,12 @@ import { NotificationService } from '../../services/notification.service';
 })
 export class LeaveManagementComponent implements OnInit {
   activeTab: 'balance' | 'apply' | 'history' | 'approvals' | 'explorer' = 'balance';
-  
+
   leaveTypes: any[] = [];
   balances: any[] = [];
   myRequests: any[] = [];
   pendingRequests: any[] = [];
-  
+
   // Explorer
   explorerSearchTerm: string = '';
   explorerData: any = null;
@@ -40,7 +40,7 @@ export class LeaveManagementComponent implements OnInit {
   // UI State
   expandedRequestId: number | null = null;
   expandedExplorerId: number | null = null;
-  
+
   // Holidays
   showHolidayModal = false;
   holidays: any[] = [];
@@ -51,7 +51,7 @@ export class LeaveManagementComponent implements OnInit {
     private leaveService: LeaveService,
     private authService: AuthService,
     private notificationService: NotificationService
-  ) {}
+  ) { }
 
   openHolidayModal(holiday?: any) {
     if (holiday) {
@@ -129,7 +129,7 @@ export class LeaveManagementComponent implements OnInit {
     const role = this.authService.getUserRole();
     this.isHr = role === 'HR' || role === 'SUPER_ADMIN';
     this.isCeo = role === 'CEO' || role === 'SUPER_ADMIN';
-    
+
     this.loadInitialData();
     if (this.isHr || this.isCeo) {
       this.loadGeneralExplorer();
@@ -147,7 +147,7 @@ export class LeaveManagementComponent implements OnInit {
     });
     this.leaveService.getBalances().subscribe(data => this.balances = data);
     this.leaveService.getMyRequests().subscribe(data => this.myRequests = data);
-    
+
     this.pendingRequests = []; // Reset before loading
     if (this.isHr) this.loadHrPending();
     if (this.isCeo) this.loadCeoPending();
@@ -197,7 +197,7 @@ export class LeaveManagementComponent implements OnInit {
 
   loadGeneralExplorer(): void {
     if (this.explorerData && this.explorerSearchTerm) return; // Don't override active search
-    
+
     this.searchLoading = true;
     this.leaveService.getGeneralSummary().subscribe({
       next: (data) => {
@@ -241,7 +241,7 @@ export class LeaveManagementComponent implements OnInit {
       this.notificationService.showAlert('All fields including reason are mandatory', 'error');
       return;
     }
-    
+
     this.leaveService.applyLeave(this.newRequest).subscribe({
       next: () => {
         this.notificationService.showAlert('Leave applied successfully!', 'success');
@@ -258,7 +258,7 @@ export class LeaveManagementComponent implements OnInit {
       this.notificationService.showAlert('Approval remarks are mandatory', 'error');
       return;
     }
-    
+
     if (this.isCeo && req.status === 'APPROVED_BY_HR') {
       this.leaveService.approveCeo({ request_id: req.id, action: 'APPROVE', remarks }).subscribe({
         next: () => {
@@ -283,7 +283,7 @@ export class LeaveManagementComponent implements OnInit {
       this.notificationService.showAlert('Rejection remarks are mandatory', 'error');
       return;
     }
-    
+
     if (this.isCeo && req.status === 'APPROVED_BY_HR') {
       this.leaveService.approveCeo({ request_id: req.id, action: 'REJECT', remarks }).subscribe({
         next: () => {
@@ -301,5 +301,17 @@ export class LeaveManagementComponent implements OnInit {
         error: (err) => this.notificationService.showAlert(err.error?.detail || 'Rejection failed', 'error')
       });
     }
+  }
+
+  cancelRequest(id: number): void {
+    if (!confirm('Are you sure you want to cancel and delete this leave request?')) return;
+
+    this.leaveService.deleteLeaveRequest(id).subscribe({
+      next: () => {
+        this.notificationService.showAlert('Leave request cancelled', 'success');
+        this.loadInitialData();
+      },
+      error: (err) => this.notificationService.showAlert(err.error?.detail || 'Cancellation failed', 'error')
+    });
   }
 }

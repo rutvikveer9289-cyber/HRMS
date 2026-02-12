@@ -1,12 +1,13 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class LeaveService {
-  private apiUrl = 'http://localhost:8000/leave';
+  private apiUrl = `${environment.apiUrl}/leave`;
 
   constructor(private http: HttpClient) { }
 
@@ -41,6 +42,10 @@ export class LeaveService {
 
   getMyRequests(): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/my-requests`);
+  }
+
+  deleteLeaveRequest(id: number): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/${id}`);
   }
 
   getHrPending(): Observable<any[]> {

@@ -123,8 +123,9 @@
 <div class="alerts-container">
   <div *ngFor="let alert of alerts" class="alert-toast" [class]="alert.type">
     <div class="alert-icon">
-      <i *ngIf="alert.type === 'success'" class="lucide-check-circle"></i>
-      <i *ngIf="alert.type === 'error'" class="lucide-alert-circle"></i>
+      <i *ngIf="alert.type === 'success'" data-lucide="check-circle"></i>
+      <i *ngIf="alert.type === 'error'" data-lucide="alert-circle"></i>
+      <i *ngIf="alert.type === 'info'" data-lucide="info"></i>
     </div>
     <span class="alert-msg">{{ alert.message }}</span>
     <button class="alert-close" (click)="removeAlert(alert.id)">&times;</button>

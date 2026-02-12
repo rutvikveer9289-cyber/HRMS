@@ -12,6 +12,13 @@ class PayrollRepository:
     def __init__(self, db: Session):
         self.db = db
     
+    def get_all(self) -> List[PayrollRecord]:
+        """Get all payroll records"""
+        return self.db.query(PayrollRecord).options(joinedload(PayrollRecord.owner)).order_by(
+            PayrollRecord.year.desc(), 
+            PayrollRecord.month.desc()
+        ).all()
+    
     def get_by_id(self, id: int) -> Optional[PayrollRecord]:
         """Get payroll record by ID"""
         return self.db.query(PayrollRecord).options(joinedload(PayrollRecord.owner)).filter(PayrollRecord.id == id).first()

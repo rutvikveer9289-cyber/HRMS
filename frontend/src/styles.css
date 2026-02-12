@@ -1,4 +1,33 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+:root {
+    /* Premium Color Palette */
+    --primary: #6366f1;
+    --primary-light: #818cf8;
+    --primary-dark: #4f46e5;
+    --accent: #f43f5e;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+
+    /* Backgrounds */
+    --bg-main: #f8fafc;
+    --bg-card: #ffffff;
+    --bg-sidebar: #0f172a;
+
+    /* Text */
+    --text-main: #1e293b;
+    --text-muted: #64748b;
+    --text-light: #94a3b8;
+
+    /* Effects */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadow-premium: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --glass: rgba(255, 255, 255, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.3);
+}
 
 * {
     margin: 0;
@@ -7,52 +36,81 @@
 }
 
 body {
-    font-family: 'Inter', sans-serif;
-    background-color: #f3f4f6;
-    color: #111827;
-}
-
-:root {
-    --primary: #4f46e5;
-    --primary-hover: #4338ca;
-    --bg-main: #f3f4f6;
-    --bg-card: #ffffff;
+    font-family: 'Outfit', 'Inter', sans-serif;
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 /* Lucide Icon Styling */
-.lucide, [data-lucide], [class^="lucide-"] {
+.lucide,
+[data-lucide],
+[class^="lucide-"] {
     display: inline-block;
     width: 1.25rem;
     height: 1.25rem;
     stroke: currentColor;
-    stroke-width: 2;
+    stroke-width: 2.25;
     stroke-linecap: round;
     stroke-linejoin: round;
     fill: none;
     vertical-align: middle;
 }
 
-/* Ensure icons inside buttons don't have extra margin */
-button .lucide, button [data-lucide] {
-    margin: 0;
+button {
+    font-family: inherit;
 }
 
-/* Responsive Utilities */
-.container {
-    max-width: 1400px;
-    margin: 0 auto;
-    width: 100%;
+/* Premium Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* Professional Utilities */
+.premium-card {
+    background: var(--bg-card);
+    border: 1px solid #e2e8f0;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.premium-card:hover {
+    box-shadow: var(--shadow- premium);
+    transform: translateY(-2px);
+}
+
+.glass-effect {
+    background: var(--glass);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
 }
 
 @media (max-width: 768px) {
     html {
         font-size: 14px;
     }
-    
+
     .mobile-hide {
         display: none !important;
     }
-    
+
     .mobile-full {
         width: 100% !important;
     }

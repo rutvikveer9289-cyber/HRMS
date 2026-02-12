@@ -21,7 +21,7 @@ async def calculate_overtime(
     current_user: Employee = Depends(get_current_user)
 ):
     """Calculate overtime from attendance records"""
-    if current_user.role not in ["HR", "SUPER_ADMIN"]:
+    if current_user.role not in ["HR", "SUPER_ADMIN", "CEO"]:
         raise HTTPException(status_code=403, detail="Not authorized")
     
     overtime_service = OvertimeService(db)

@@ -45,5 +45,6 @@ class Employee(Base):
     location = Column(String(100), nullable=True)
     bank_name = Column(String(100), nullable=True)
     bank_account_no = Column(String(50), nullable=True)
+    bank_ifsc_code = Column(String(20), nullable=True)
     
     created_at = Column(DateTime, default=get_ist_now)

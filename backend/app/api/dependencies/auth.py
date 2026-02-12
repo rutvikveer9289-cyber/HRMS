@@ -74,8 +74,8 @@ def check_hr(user: Employee = Depends(get_current_user)) -> Employee:
     Raises:
         HTTPException: If user doesn't have HR role
     """
-    if user.role not in [UserRole.SUPER_ADMIN, UserRole.HR]:
-        raise HTTPException(status_code=403, detail="Only HR or Admin can perform this action")
+    if user.role not in [UserRole.SUPER_ADMIN, UserRole.HR, UserRole.CEO]:
+        raise HTTPException(status_code=403, detail="Only HR, CEO or Admin can perform this action")
     return user
 
 def check_ceo(user: Employee = Depends(get_current_user)) -> Employee:

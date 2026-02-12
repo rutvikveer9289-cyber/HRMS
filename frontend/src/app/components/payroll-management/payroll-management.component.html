@@ -1,192 +1,397 @@
-<div class="payroll-container">
+<div class="payroll-container animate__animated animate__fadeIn">
+    <!-- Header: Title & Master History -->
     <div class="header">
-        <h1>Payroll Management</h1>
-        <p>Manage salaries, process payroll, and handle overtime</p>
-    </div>
-
-    <!-- Tab Navigation -->
-    <div class="tabs">
-        <button *ngIf="canManagePayroll" [class.active]="activeTab === 'payroll'" (click)="setActiveTab('payroll')">
-            Payroll Processing
-        </button>
-        <button *ngIf="canManagePayroll" [class.active]="activeTab === 'salary'" (click)="setActiveTab('salary')">
-            Salary Management
-        </button>
-        <button *ngIf="canManagePayroll" [class.active]="activeTab === 'overtime'" (click)="setActiveTab('overtime')">
-            Overtime Approvals
-        </button>
-        <button *ngIf="canManagePayroll" [class.active]="activeTab === 'deductions'"
-            (click)="setActiveTab('deductions')">
-            Deduction Management
-        </button>
-        <button [class.active]="activeTab === 'my-payslips'" (click)="setActiveTab('my-payslips')">
-            My Payslips
-        </button>
-    </div>
-
-    <!-- Payroll Processing Tab -->
-    <div *ngIf="activeTab === 'payroll'" class="tab-content">
-        <!-- Payment Summary Dashboard -->
-        <div class="payment-summary-grid" *ngIf="!loading">
-            <div class="summary-card total">
-                <div class="summary-icon">
+        <div class="header-titles">
+            <h1>Payroll Management</h1>
+        </div>
+        <div class="header-actions-group">
+            <!-- Compact Header Symbols (Toggle Focused Details) -->
+            <div class="mini-dashboard-header">
+                <div class="stat-pill total" (click)="toggleStat('total')" [class.active]="activeStat === 'total'"
+                    title="Personnel Overview">
                     <i data-lucide="users"></i>
+                    <span class="v">{{ payrollRecords.length }}</span>
                 </div>
-                <div class="summary-content">
-                    <span class="summary-label">Total Employees</span>
-                    <span class="summary-value">{{ payrollRecords.length }}</span>
-                </div>
-            </div>
-
-            <div class="summary-card paid">
-                <div class="summary-icon">
+                <div class="stat-pill paid" (click)="toggleStat('paid')" [class.active]="activeStat === 'paid'"
+                    title="Disbursed Funds">
                     <i data-lucide="check-circle"></i>
+                    <span class="v" style="font-size: 11px;">{{ formatCurrency(getTotalPaidAmount()) }}</span>
                 </div>
-                <div class="summary-content">
-                    <span class="summary-label">Paid</span>
-                    <span class="summary-value">{{ getPaidCount() }}</span>
-                    <span class="summary-sublabel">{{ formatCurrency(getTotalPaidAmount()) }}</span>
-                </div>
-            </div>
-
-            <div class="summary-card pending">
-                <div class="summary-icon">
+                <div class="stat-pill pending" (click)="toggleStat('pending')" [class.active]="activeStat === 'pending'"
+                    title="Pending Obligations">
                     <i data-lucide="clock"></i>
+                    <span class="v" style="font-size: 11px;">{{ formatCurrency(getTotalPendingAmount()) }}</span>
                 </div>
-                <div class="summary-content">
-                    <span class="summary-label">Pending Payment</span>
-                    <span class="summary-value">{{ getPendingCount() }}</span>
-                    <span class="summary-sublabel">{{ formatCurrency(getTotalPendingAmount()) }}</span>
-                </div>
-            </div>
-
-            <div class="summary-card amount">
-                <div class="summary-icon">
+                <div class="stat-pill amount" (click)="toggleStat('amount')" [class.active]="activeStat === 'amount'"
+                    title="Net Liquidity Volume">
                     <i data-lucide="indian-rupee"></i>
-                </div>
-                <div class="summary-content">
-                    <span class="summary-label">Total Payroll</span>
-                    <span class="summary-value">{{ formatCurrency(getTotalPayrollAmount()) }}</span>
+                    <span class="v" style="font-size: 11px;">{{ formatCurrency(getTotalPayrollAmount()) }}</span>
                 </div>
             </div>
-        </div>
 
-        <div class="controls">
-            <div class="month-selector">
-                <label>Month:</label>
-                <select [(ngModel)]="selectedMonth" (change)="loadPayrollRecords()">
-                    <option *ngFor="let m of [1,2,3,4,5,6,7,8,9,10,11,12]" [value]="m">
-                        {{ getMonthName(m) }}
-                    </option>
-                </select>
-            </div>
-            <div class="year-selector">
-                <label>Year:</label>
-                <input type="number" [(ngModel)]="selectedYear" (change)="loadPayrollRecords()" />
-            </div>
-            <button class="btn-primary" (click)="processAllPayroll()" [disabled]="loading">
-                Process All Payroll
+            <button *ngIf="canManagePayroll" class="btn-history-top" (click)="loadAllHistory()"
+                [class.active-mode]="isAllHistory" title="Toggle Ledger">
+                <i data-lucide="layout-grid" style="width: 16px;"></i>
             </button>
-            <div class="single-process">
-                <input type="text" [(ngModel)]="processSingleEmpId" placeholder="Emp ID (RBIS0001)" />
-                <button class="btn-secondary" (click)="processSinglePayroll()" [disabled]="loading">
-                    Process Single
-                </button>
+        </div>
+    </div>
+
+    <!-- Segmented Tab Navigation -->
+    <div class="tabs">
+        <button *ngIf="canManagePayroll" [class.active]="activeTab === 'payroll'"
+            (click)="setActiveTab('payroll')">Processing</button>
+        <button *ngIf="canManagePayroll" [class.active]="activeTab === 'salary'" (click)="setActiveTab('salary')">Salary
+            Mapping</button>
+        <button *ngIf="canManagePayroll" [class.active]="activeTab === 'overtime'"
+            (click)="setActiveTab('overtime')">Overtime</button>
+        <button *ngIf="canManagePayroll" [class.active]="activeTab === 'deductions'"
+            (click)="setActiveTab('deductions')">Deductions</button>
+        <button [class.active]="activeTab === 'my-payslips'" (click)="setActiveTab('my-payslips')">Personal</button>
+    </div>
+
+    <!-- Main Workspace -->
+    <div *ngIf="activeTab === 'payroll'" class="tab-content">
+        <!-- Focused Detail Ribbon (Appears on click) -->
+        <div class="stat-ribbon animate__animated animate__fadeInDown" *ngIf="activeStat && !loading"
+            [class]="'stat-ribbon ' + activeStat">
+            <div class="ribbon-content">
+                <i data-lucide="users" *ngIf="activeStat === 'total'"></i>
+                <i data-lucide="check-circle" *ngIf="activeStat === 'paid'"></i>
+                <i data-lucide="clock" *ngIf="activeStat === 'pending'"></i>
+                <i data-lucide="indian-rupee" *ngIf="activeStat === 'amount'"></i>
+
+                <span class="ribbon-title">
+                    {{ activeStat === 'total' ? 'Workforce Pool' :
+                    activeStat === 'paid' ? 'Disbursed Funds' :
+                    activeStat === 'pending' ? 'Pending Obligations' : 'Net Liquidity' }}
+                </span>
+
+                <span class="ribbon-value">
+                    {{ activeStat === 'total' ? payrollRecords.length + ' Employees' :
+                    activeStat === 'paid' ? formatCurrency(getTotalPaidAmount()) + ' across ' + getPaidCount() + '
+                    staff' :
+                    activeStat === 'pending' ? formatCurrency(getTotalPendingAmount()) + ' for ' + getPendingCount() + '
+                    staff' :
+                    formatCurrency(getTotalPayrollAmount()) + ' (Full Volume)' }}
+                </span>
+            </div>
+            <button class="ribbon-close" (click)="activeStat = null"><i data-lucide="x"></i></button>
+        </div>
+
+        <div class="board-header-minimal">
+            <div class="title-group">
+                <h2>{{ isAllHistory ? 'Historical Archive' : 'Current Payroll' }}</h2>
+                <div class="filter-pills-mini">
+                    <button (click)="paymentFilter = 'all'" [class.active]="paymentFilter === 'all'">All</button>
+                    <button (click)="paymentFilter = 'paid'" [class.active]="paymentFilter === 'paid'">Paid</button>
+                    <button (click)="paymentFilter = 'pending'"
+                        [class.active]="paymentFilter === 'pending'">Pending</button>
+                </div>
             </div>
         </div>
 
-        <div *ngIf="loading" class="loading">Loading...</div>
+        <!-- Two-Column Workspace -->
+        <div class="workspace-grid" *ngIf="!loading">
+            <!-- Left: Main Content Card (Table) -->
+            <div class="main-content-card">
+                <div class="table-area">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 40px;" *ngIf="!isAllHistory">
+                                    <input type="checkbox" (change)="toggleSelectAll($event)"
+                                        [checked]="isAllSelected()" />
+                                </th>
+                                <th *ngIf="isAllHistory">Personnel</th>
+                                <th *ngIf="isAllHistory">Disbursed Amount</th>
+                                <th *ngIf="isAllHistory">Payment Session</th>
 
-        <div *ngIf="!loading && payrollRecords.length === 0" class="empty-state">
-            <p>No payroll records found for {{ getMonthName(selectedMonth) }} {{ selectedYear }}</p>
-            <p>Click "Process All Payroll" to generate payroll for all employees</p>
-        </div>
+                                <th *ngIf="!isAllHistory">Personnel</th>
+                                <th *ngIf="!isAllHistory">Earnings</th>
+                                <th *ngIf="!isAllHistory">Net Payable</th>
+                                <th *ngIf="!isAllHistory">Status</th>
+                                <th style="text-align: right;" *ngIf="!isAllHistory">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr *ngFor="let record of getFilteredRecords()" [class.selected-row]="record.selected">
+                                <!-- Standard View Checkbox -->
+                                <td *ngIf="!isAllHistory">
+                                    <input type="checkbox" [(ngModel)]="record.selected"
+                                        [disabled]="record.status === 'PAID'" />
+                                </td>
 
-        <div *ngIf="!loading && payrollRecords.length > 0" class="table-wrapper">
-            <!-- Filter and Bulk Actions Bar -->
-            <div class="table-actions-bar">
-                <div class="filter-buttons">
-                    <button [class.active]="paymentFilter === 'all'" (click)="paymentFilter = 'all'" class="filter-btn">
-                        All ({{ payrollRecords.length }})
-                    </button>
-                    <button [class.active]="paymentFilter === 'paid'" (click)="paymentFilter = 'paid'"
-                        class="filter-btn">
-                        Paid ({{ getPaidCount() }})
-                    </button>
-                    <button [class.active]="paymentFilter === 'pending'" (click)="paymentFilter = 'pending'"
-                        class="filter-btn">
-                        Pending ({{ getPendingCount() }})
-                    </button>
+                                <!-- Master Ledger Content -->
+                                <td *ngIf="isAllHistory">
+                                    <div class="emp-meta">
+                                        <div class="emp-avatar">{{ record.emp_id.substring(record.emp_id.length - 2)
+                                            }}
+                                        </div>
+                                        <div class="emp-details">
+                                            <b>{{ record.owner?.full_name || record.emp_id }}</b>
+                                            <span>{{ record.emp_id }}</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td *ngIf="isAllHistory">
+                                    <span class="amount-primary">{{ formatCurrency(record.net_salary) }}</span>
+                                </td>
+                                <td *ngIf="isAllHistory">
+                                    <div class="session-badge">
+                                        <i data-lucide="calendar" style="width: 12px; margin-right: 4px;"></i>
+                                        <span>{{ record.month }} / {{ record.year }}</span>
+                                    </div>
+                                </td>
+
+                                <!-- Standard View Content -->
+                                <td *ngIf="!isAllHistory">
+                                    <div class="emp-meta">
+                                        <div class="emp-avatar">{{ record.emp_id.substring(record.emp_id.length - 2)
+                                            }}
+                                        </div>
+                                        <div class="emp-details">
+                                            <b>{{ record.emp_id }}</b>
+                                            <span>{{ record.owner?.bank_name || 'N/A' }}</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td *ngIf="!isAllHistory">
+                                    <div style="font-size: 11px; line-height: 1.4;">
+                                        <div style="display: flex; justify-content: space-between;">
+                                            <span>Basic:</span>
+                                            <span>{{ formatCurrency(record.basic_salary) }}</span>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between; color: #64748b;">
+                                            <span>+ Allw:</span> <span>{{ formatCurrency((record.gross_salary -
+                                                record.basic_salary - record.overtime_amount) || 0) }}</span>
+                                        </div>
+                                        <div *ngIf="record.overtime_amount > 0"
+                                            style="display: flex; justify-content: space-between; color: #2563eb;">
+                                            <span>+ OT:</span> <span>{{ formatCurrency(record.overtime_amount)
+                                                }}</span>
+                                        </div>
+                                        <div style="border-top: 1px solid #e2e8f0; margin: 2px 0;"></div>
+                                        <div
+                                            style="display: flex; justify-content: space-between; font-weight: 600; font-size: 12px;">
+                                            <span>Gross:</span> <span>{{ formatCurrency(record.gross_salary)
+                                                }}</span>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between; color: #ef4444;">
+                                            <span>- Ded:</span> <span>{{ formatCurrency(record.total_deductions)
+                                                }}</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td *ngIf="!isAllHistory">
+                                    <span class="amount-primary">{{ formatCurrency(record.net_salary) }}</span>
+                                </td>
+                                <td *ngIf="!isAllHistory">
+                                    <span [class]="'status-badge status-' + record.status.toLowerCase()">{{
+                                        record.status }}</span>
+                                </td>
+                                <td *ngIf="!isAllHistory">
+                                    <div
+                                        style="display: flex; gap: 8px; justify-content: flex-end; align-items: center;">
+                                        <button class="btn-circle" (click)="downloadPayslip(record.id, record.emp_id)"
+                                            title="Download Payslip">
+                                            <i data-lucide="file-text" style="width: 16px;"></i>
+                                        </button>
+
+                                        <button class="btn-circle" style="color: #3b82f6; background: #eff6ff;"
+                                            *ngIf="record.status !== 'PAID'" (click)="editPayroll(record)"
+                                            title="Edit Payroll">
+                                            <i data-lucide="pencil" style="width: 16px;"></i>
+                                        </button>
+
+                                        <button *ngIf="record.status !== 'PAID'" class="btn-success"
+                                            style="padding: 6px 12px; font-size: 11px; border-radius: 6px; display: flex; align-items: center; gap: 4px;"
+                                            (click)="openPaymentModal(record)">
+                                            <span>Disburse</span>
+                                            <i data-lucide="arrow-right" style="width: 12px;"></i>
+                                        </button>
+
+                                        <div *ngIf="record.status === 'PAID'" style="color: #10b981;">
+                                            <i data-lucide="verified" style="width: 18px;"></i>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
 
-                <div class="bulk-actions" *ngIf="getSelectedCount() > 0">
-                    <span class="selection-count">{{ getSelectedCount() }} selected</span>
-                    <select #bulkPaymentMethod class="bulk-payment-select">
-                        <option *ngFor="let method of paymentMethods" [value]="method">{{ method }}</option>
-                    </select>
-                    <button class="btn-success" (click)="bulkMarkAsPaid(bulkPaymentMethod.value)">
-                        Pay Selected
-                    </button>
-                    <button class="btn-secondary btn-sm" (click)="clearSelection()">Clear</button>
+                <!-- Bulk Footer (Floating style if active) -->
+                <div class="board-footer" style="padding: 16px; background: #0f172a; color: white;"
+                    *ngIf="getSelectedCount() > 0">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span><b>{{ getSelectedCount() }}</b> Members Selected</span>
+                        <div style="display: flex; gap: 12px;">
+                            <select #bulkPM class="mini-input" style="background: #1e293b; color: white; border: none;">
+                                <option *ngFor="let method of paymentMethods" [value]="method">{{ method }}</option>
+                            </select>
+                            <button class="btn-success" (click)="bulkMarkAsPaid(bulkPM.value)">Disburse
+                                Total</button>
+                            <button class="btn-secondary" (click)="clearSelection()"
+                                style="background: transparent; color: white; border: none;">Cancel</button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="payroll-table">
+            <!-- Right Column: Sidebar Controls -->
+            <div class="control-sidebar">
+                <div class="control-section">
+                    <h4>Disbursement Cycle</h4>
+                    <div class="period-picker">
+                        <div class="input-field">
+                            <label>Payroll Month</label>
+                            <select [(ngModel)]="selectedMonth" (change)="loadPayrollRecords()">
+                                <option *ngFor="let m of [1,2,3,4,5,6,7,8,9,10,11,12]" [value]="m">{{
+                                    getMonthName(m) }}
+                                </option>
+                            </select>
+                        </div>
+                        <div class="input-field">
+                            <label>Fiscal Year</label>
+                            <input type="number" [(ngModel)]="selectedYear" (change)="loadPayrollRecords()" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="control-section">
+                    <h4>Batch Actions</h4>
+                    <button class="btn-run-payroll" (click)="processAllPayroll()" [disabled]="loading">
+                        <i data-lucide="zap" style="width: 18px;"></i>
+                        Run Full Calculation
+                    </button>
+                    <p style="font-size: 11px; color: #94a3b8; margin-top: 12px; line-height: 1.4;">
+                        Generates payroll drafts for all active employees for the selected period.
+                    </p>
+                </div>
+
+                <div class="control-section">
+                    <h4>Individual Process</h4>
+                    <div class="single-box">
+                        <input type="text" class="mini-input" [(ngModel)]="processSingleEmpId"
+                            placeholder="Employee ID..." />
+                        <button class="btn-secondary" (click)="processSinglePayroll()" style="width: 100%;">Process
+                            Single</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Empty State Handling -->
+        <div *ngIf="!loading && payrollRecords.length === 0" class="empty-state"
+            style="padding: 100px; text-align: center;">
+            <i data-lucide="file-search" style="width: 48px; height: 48px; color: #cbd5e1; margin-bottom: 20px;"></i>
+            <h3 style="color: #1e293b;">Empty Data Ledger</h3>
+            <p style="color: #64748b;">No records found for the selected period.</p>
+        </div>
+    </div>
+
+    <!-- Salary Tab -->
+    <div *ngIf="activeTab === 'salary'" class="tab-content">
+        <div class="main-content-card" style="max-width: 800px; margin: 0 auto; padding: 40px;">
+            <!-- Reuse existing form logic -->
+            <div class="salary-form">
+                <h2>Define Salary Structure</h2>
+                <form (ngSubmit)="createSalaryStructure()">
+                    <div class="form-group">
+                        <label>Employee Identifier</label>
+                        <input type="text" class="mini-input" [(ngModel)]="salaryForm.emp_id" name="emp_id" required
+                            placeholder="e.g. RBIS001" />
+                    </div>
+
+                    <h3 style="margin: 20px 0 10px; font-size: 14px; color: #64748b; text-transform: uppercase;">
+                        Earnings Components</h3>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div class="form-group">
+                            <label>Basic Salary <span style="color:red">*</span></label>
+                            <input type="number" class="mini-input" [(ngModel)]="salaryForm.basic_salary"
+                                name="basic_salary" required min="0" />
+                        </div>
+                        <div class="form-group">
+                            <label>HRA (House Rent Allowance)</label>
+                            <input type="number" class="mini-input" [(ngModel)]="salaryForm.hra" name="hra" min="0" />
+                        </div>
+                        <div class="form-group">
+                            <label>Transport Allowance</label>
+                            <input type="number" class="mini-input" [(ngModel)]="salaryForm.transport_allowance"
+                                name="transport_allowance" min="0" />
+                        </div>
+                        <div class="form-group">
+                            <label>Dearness Allowance (DA)</label>
+                            <input type="number" class="mini-input" [(ngModel)]="salaryForm.dearness_allowance"
+                                name="dearness_allowance" min="0" />
+                        </div>
+                        <div class="form-group">
+                            <label>Medical Allowance</label>
+                            <input type="number" class="mini-input" [(ngModel)]="salaryForm.medical_allowance"
+                                name="medical_allowance" min="0" />
+                        </div>
+                        <div class="form-group">
+                            <label>Special Allowance</label>
+                            <input type="number" class="mini-input" [(ngModel)]="salaryForm.special_allowance"
+                                name="special_allowance" min="0" />
+                        </div>
+                        <div class="form-group">
+                            <label>Other Allowances</label>
+                            <input type="number" class="mini-input" [(ngModel)]="salaryForm.other_allowances"
+                                name="other_allowances" min="0" />
+                        </div>
+                    </div>
+
+                    <div
+                        style="margin-top: 24px; padding: 16px; background: #f1f5f9; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-weight: 600; color: #475569;">Total Gross Salary Per Month</span>
+                        <span style="font-size: 18px; font-weight: 700; color: #2563eb;">
+                            {{ formatCurrency(calculateGrossSalary()) }}
+                        </span>
+                    </div>
+
+                    <div class="form-actions" style="margin-top: 30px; display: flex; gap: 12px;">
+                        <button type="submit" class="btn-primary">Activate Structure</button>
+                        <button type="button" class="btn-secondary" (click)="resetSalaryForm()">Clear</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overtime Approvals Tab -->
+    <div *ngIf="activeTab === 'overtime'" class="tab-content">
+        <div class="main-content-card">
+            <div class="board-header">
+                <h2>Pending Overtime Requests</h2>
+            </div>
+            <div *ngIf="pendingOvertimeApprovals.length === 0" class="empty-state" style="padding: 60px;">
+                <p>No pending overtime approvals</p>
+            </div>
+            <div *ngIf="pendingOvertimeApprovals.length > 0" class="table-area">
                 <table>
                     <thead>
                         <tr>
-                            <th style="width: 40px;">
-                                <input type="checkbox" (change)="toggleSelectAll($event)" [checked]="isAllSelected()" />
-                            </th>
-                            <th>Emp ID</th>
-                            <th>Gross</th>
-                            <th>Deduct.</th>
-                            <th>OT</th>
-                            <th>Net Salary</th>
-                            <th>Status</th>
-                            <th>Bank</th>
-                            <th>Actions</th>
+                            <th>Employee</th>
+                            <th>Date</th>
+                            <th>OT Hours</th>
+                            <th>Amount</th>
+                            <th style="text-align: right;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr *ngFor="let record of getFilteredRecords()" [class.selected-row]="record.selected">
-                            <td>
-                                <input type="checkbox" [(ngModel)]="record.selected"
-                                    [disabled]="record.status === 'PAID'" />
-                            </td>
-                            <td><strong>{{ record.emp_id }}</strong></td>
-                            <td>{{ formatCurrency(record.gross_salary) }}</td>
-                            <td class="deduction">-{{ formatCurrency(record.total_deductions) }}</td>
-                            <td class="overtime-amt">+{{ formatCurrency(record.overtime_amount) }}</td>
-                            <td class="net-salary">{{ formatCurrency(record.net_salary) }}</td>
-                            <td>
-                                <span [class]="'status-badge status-' + record.status.toLowerCase()">
-                                    {{ record.status }}
-                                </span>
-                            </td>
-                            <td>
-                                <div class="bank-details" *ngIf="record.owner">
-                                    <strong>{{ record.owner.bank_name || 'No Bank' }}</strong>
-                                    <span>{{ record.owner.bank_account_no || 'No Acc' }}</span>
-                                </div>
-                            </td>
-                            <td class="actions">
-                                <button class="btn-icon" (click)="downloadPayslip(record.id, record.emp_id)"
-                                    title="Download Payslip">
-                                    <i data-lucide="download"></i>
-                                </button>
-                                <div *ngIf="record.status !== 'PAID'" class="pay-action-inline">
-                                    <select #pm class="compact-select">
-                                        <option *ngFor="let method of paymentMethods" [value]="method">{{ method }}
-                                        </option>
-                                    </select>
-                                    <button class="btn-success btn-sm" (click)="markAsPaid(record.id, pm.value)">
-                                        Pay
-                                    </button>
-                                </div>
-                                <span *ngIf="record.status === 'PAID'" class="payment-info">
-                                    <i data-lucide="check-circle"></i> {{ record.payment_method }}
-                                </span>
+                        <tr *ngFor="let ot of pendingOvertimeApprovals">
+                            <td><b>{{ ot.emp_id }}</b></td>
+                            <td>{{ ot.date | date:'dd MMM yyyy' }}</td>
+                            <td style="color: #2563eb; font-weight: 700;">{{ ot.overtime_hours }}h</td>
+                            <td>{{ formatCurrency(ot.overtime_amount) }}</td>
+                            <td class="actions" style="display: flex; gap: 8px; justify-content: flex-end;">
+                                <button class="btn-success" style="padding: 6px 12px; font-size: 12px;"
+                                    (click)="approveOvertime(ot.id)">Approve</button>
+                                <button class="btn-danger"
+                                    style="padding: 6px 12px; font-size: 12px; background: #fef2f2; border: 1px solid #fee2e2; color: #ef4444;"
+                                    (click)="rejectOvertime(ot.id)">Reject</button>
                             </td>
                         </tr>
                     </tbody>
@@ -195,271 +400,240 @@
         </div>
     </div>
 
-    <!-- Salary Management Tab -->
-    <div *ngIf="activeTab === 'salary'" class="tab-content">
-        <div class="salary-form">
-            <h2>Create Salary Structure</h2>
-            <form (ngSubmit)="createSalaryStructure()">
-                <div class="form-group">
-                    <label>Employee ID:</label>
-                    <input type="text" [(ngModel)]="salaryForm.emp_id" name="emp_id" required />
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Basic Salary:</label>
-                        <input type="number" [(ngModel)]="salaryForm.basic_salary" name="basic_salary" required />
-                    </div>
-                    <div class="form-group">
-                        <label>HRA:</label>
-                        <input type="number" [(ngModel)]="salaryForm.hra" name="hra" />
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Transport Allowance:</label>
-                        <input type="number" [(ngModel)]="salaryForm.transport_allowance" name="transport_allowance" />
-                    </div>
-                    <div class="form-group">
-                        <label>Dearness Allowance:</label>
-                        <input type="number" [(ngModel)]="salaryForm.dearness_allowance" name="dearness_allowance" />
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Medical Allowance:</label>
-                        <input type="number" [(ngModel)]="salaryForm.medical_allowance" name="medical_allowance" />
-                    </div>
-                    <div class="form-group">
-                        <label>Special Allowance:</label>
-                        <input type="number" [(ngModel)]="salaryForm.special_allowance" name="special_allowance" />
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label>Other Allowances:</label>
-                    <input type="number" [(ngModel)]="salaryForm.other_allowances" name="other_allowances" />
-                </div>
-
-                <div class="gross-salary">
-                    <strong>Gross Salary: {{ formatCurrency(calculateGrossSalary()) }}</strong>
-                </div>
-
-                <div class="form-actions">
-                    <button type="submit" class="btn-primary">Create Salary Structure</button>
-                    <button type="button" class="btn-secondary" (click)="resetSalaryForm()">Reset</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Overtime Approvals Tab -->
-    <div *ngIf="activeTab === 'overtime'" class="tab-content">
-        <h2>Pending Overtime Approvals</h2>
-
-        <div *ngIf="pendingOvertimeApprovals.length === 0" class="empty-state">
-            <p>No pending overtime approvals</p>
-        </div>
-
-        <div *ngIf="pendingOvertimeApprovals.length > 0" class="overtime-table">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Employee ID</th>
-                        <th>Date</th>
-                        <th>Regular Hours</th>
-                        <th>Actual Hours</th>
-                        <th>Overtime Hours</th>
-                        <th>Overtime Amount</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr *ngFor="let ot of pendingOvertimeApprovals">
-                        <td>{{ ot.emp_id }}</td>
-                        <td>{{ ot.date | date:'dd/MM/yyyy' }}</td>
-                        <td>{{ ot.regular_hours }}</td>
-                        <td>{{ ot.actual_hours }}</td>
-                        <td class="overtime-hours">{{ ot.overtime_hours }}</td>
-                        <td>{{ formatCurrency(ot.overtime_amount) }}</td>
-                        <td class="actions">
-                            <button class="btn-success" (click)="approveOvertime(ot.id)">Approve</button>
-                            <button class="btn-danger" (click)="rejectOvertime(ot.id)">Reject</button>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- Deduction Management Tab -->
+    <!-- Deductions Tab -->
     <div *ngIf="activeTab === 'deductions'" class="tab-content">
-        <div class="deduction-management-grid">
-            <!-- Create Deduction Type -->
-            <div class="salary-form">
-                <h2>Create Deduction Type</h2>
-                <form (ngSubmit)="createDeductionType()">
-                    <div class="form-group">
-                        <label>Name (e.g., PF, Tax):</label>
-                        <input type="text" [(ngModel)]="newDeductionType.name" name="dt_name" required />
-                    </div>
-                    <div class="form-group">
-                        <label>Calculation Type:</label>
-                        <select [(ngModel)]="newDeductionType.calculation_type" name="dt_calc">
-                            <option value="FIXED">FIXED</option>
-                            <option value="PERCENTAGE">PERCENTAGE (%)</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Default Value:</label>
-                        <input type="number" [(ngModel)]="newDeductionType.default_value" name="dt_val" />
-                    </div>
-                    <button type="submit" class="btn-primary">Create Type</button>
-                </form>
+        <div class="workspace-grid">
+            <div class="main-content-card" style="padding: 24px;">
+                <div class="salary-form">
+                    <h2>Deduction Management</h2>
+                    <form (ngSubmit)="createDeductionType()">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                            <div class="input-field">
+                                <label>Deduction Name</label>
+                                <input type="text" class="mini-input" [(ngModel)]="newDeductionType.name" name="dt_name"
+                                    required placeholder="e.g. PF, Health Tax" />
+                            </div>
+                            <div class="input-field">
+                                <label>Default Value</label>
+                                <input type="number" class="mini-input" [(ngModel)]="newDeductionType.default_value"
+                                    name="dt_val" />
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-primary" style="margin-top: 16px;">Register Type</button>
+                    </form>
 
-                <h3 style="margin-top: 20px;">Existing Types</h3>
-                <div class="types-list">
-                    <div *ngFor="let type of deductionTypes" class="type-item">
-                        <strong>{{ type.name }}</strong>
-                        <span>{{ type.calculation_type }} ({{ type.default_value }})</span>
+                    <h3 style="margin-top: 32px; font-size: 14px; text-transform: uppercase; color: #94a3b8;">
+                        Registered
+                        Frameworks</h3>
+                    <div
+                        style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-top: 12px;">
+                        <div *ngFor="let type of deductionTypes" class="payment-mini-card">
+                            <b>{{ type.name }}</b>
+                            <div style="font-size: 12px; color: #64748b;">{{ type.calculation_type }} ({{
+                                type.default_value }})</div>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Assign Deduction to Employee -->
-            <div class="salary-form">
-                <h2>Assign to Employee</h2>
-                <form (ngSubmit)="assignDeduction()">
-                    <div class="form-group">
-                        <label>Employee ID:</label>
-                        <input type="text" [(ngModel)]="deductionForm.emp_id" name="as_emp"
-                            (change)="loadEmployeeDeductions()" required />
+            <div class="control-sidebar" style="background: #f8fafc;">
+                <h4>Assign Deduction</h4>
+                <div class="period-picker">
+                    <div class="input-field">
+                        <label>Target Employee</label>
+                        <input type="text" class="mini-input" [(ngModel)]="deductionForm.emp_id" name="as_emp"
+                            (change)="loadEmployeeDeductions()" placeholder="RBIS0001" />
                     </div>
-                    <div class="form-group">
-                        <label>Deduction Type:</label>
-                        <select [(ngModel)]="deductionForm.deduction_type_id" name="as_type" required>
+                    <div class="input-field">
+                        <label>Type</label>
+                        <select [(ngModel)]="deductionForm.deduction_type_id" name="as_type">
                             <option *ngFor="let type of deductionTypes" [value]="type.id">{{ type.name }}</option>
                         </select>
                     </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Calculation:</label>
-                            <select [(ngModel)]="deductionForm.calculation_type" name="as_calc">
-                                <option value="FIXED">FIXED</option>
-                                <option value="PERCENTAGE">PERCENTAGE (%)</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Value:</label>
-                            <input type="number" [(ngModel)]="deductionForm.value" name="as_val" required />
-                        </div>
+                    <div class="input-field">
+                        <label>Value</label>
+                        <input type="number" class="mini-input" [(ngModel)]="deductionForm.value" name="as_val" />
                     </div>
-                    <button type="submit" class="btn-success">Assign Deduction</button>
-                </form>
-
-                <h3 style="margin-top: 20px;">Active Deductions for {{ deductionForm.emp_id || 'Employee' }}</h3>
-                <div class="active-deductions">
-                    <div *ngIf="employeeDeductions.length === 0" class="empty-mini">No active deductions found</div>
-                    <div *ngFor="let ed of employeeDeductions" class="deduction-record">
-                        <div>
-                            <strong>{{ ed.deduction_type?.name }}</strong>:
-                            {{ ed.value }}{{ ed.calculation_type === 'PERCENTAGE' ? '%' : '' }}
-                        </div>
-                        <button class="btn-danger btn-sm" (click)="deactivateDeduction(ed.id)">Remove</button>
-                    </div>
+                    <button class="btn-success" style="width: 100%; padding: 12px;" (click)="assignDeduction()">Bind
+                        Deduction</button>
                 </div>
             </div>
         </div>
     </div>
-    <div *ngIf="activeTab === 'my-payslips'" class="tab-content">
-        <h2>My Salary & Payslips</h2>
 
-        <!-- Active Salary Structure Card -->
-        <div *ngIf="!loading && activeSalary" class="salary-structure-card">
-            <h3>Current Salary Structure</h3>
-            <div class="salary-grid">
-                <div class="salary-item">
-                    <span>Basic Salary</span>
-                    <strong>{{ formatCurrency(activeSalary.basic_salary) }}</strong>
-                </div>
-                <div class="salary-item">
-                    <span>HRA</span>
-                    <strong>{{ formatCurrency(activeSalary.hra) }}</strong>
-                </div>
-                <div class="salary-item">
-                    <span>Dearness Allowance</span>
-                    <strong>{{ formatCurrency(activeSalary.dearness_allowance) }}</strong>
-                </div>
-                <div class="salary-item">
-                    <span>Transport Allowance</span>
-                    <strong>{{ formatCurrency(activeSalary.transport_allowance) }}</strong>
-                </div>
-                <div class="salary-item">
-                    <span>Medical Allowance</span>
-                    <strong>{{ formatCurrency(activeSalary.medical_allowance) }}</strong>
-                </div>
-                <div class="salary-item">
-                    <span>Special Allowance</span>
-                    <strong>{{ formatCurrency(activeSalary.special_allowance) }}</strong>
-                </div>
-                <div class="salary-item">
-                    <span>Other Allowances</span>
-                    <strong>{{ formatCurrency(activeSalary.other_allowances) }}</strong>
-                </div>
-                <div class="salary-item total">
-                    <span>Gross Salary</span>
-                    <strong>{{ formatCurrency(activeSalary.gross_salary) }}</strong>
+    <!-- My Payslips Tab -->
+    <div *ngIf="activeTab === 'my-payslips'" class="tab-content">
+        <div class="main-content-card" style="padding: 32px;">
+            <div *ngIf="activeSalary" style="margin-bottom: 40px;">
+                <h2 style="margin-bottom: 24px;">Personal Salary Structure</h2>
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;">
+                    <div class="payment-mini-card">
+                        <span>Basic</span>
+                        <div class="amount-primary">{{ formatCurrency(activeSalary.basic_salary) }}</div>
+                    </div>
+                    <div class="payment-mini-card">
+                        <span>Allowances</span>
+                        <div class="amount-primary" style="color: #10b981;">+{{
+                            formatCurrency(activeSalary.total_allowances || 0) }}</div>
+                    </div>
+                    <div class="payment-mini-card">
+                        <span>Gross</span>
+                        <div class="amount-primary" style="color: #6366f1;">{{
+                            formatCurrency(activeSalary.gross_salary)
+                            }}</div>
+                    </div>
                 </div>
             </div>
+
+            <h3 style="margin-bottom: 16px;">Historical Payslips</h3>
+            <div class="table-area">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Period</th>
+                            <th>Gross</th>
+                            <th>Deductions</th>
+                            <th>Net Amount</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let record of myPayslips">
+                            <td><b>{{ getMonthName(record.month) }} {{ record.year }}</b></td>
+                            <td>{{ formatCurrency(record.gross_salary) }}</td>
+                            <td style="color: #ef4444;">-{{ formatCurrency(record.total_deductions) }}</td>
+                            <td><span class="amount-primary" style="color: #10b981;">{{
+                                    formatCurrency(record.net_salary) }}</span></td>
+                            <td>
+                                <span [class]="'status-badge status-' + record.status.toLowerCase()">{{
+                                    record.status
+                                    }}</span>
+                            </td>
+                            <td>
+                                <button class="btn-circle" (click)="downloadPayslip(record.id, record.emp_id)">
+                                    <i data-lucide="download"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
+    </div>
 
-        <!-- Empty State for Salary Structure -->
-        <div *ngIf="!loading && !activeSalary" class="salary-structure-card empty">
-            <h3>Current Salary Structure</h3>
-            <p style="color: #666; font-style: italic;">No active salary structure has been assigned to you yet.</p>
+    <div *ngIf="loading" class="loading-overlay" style="display: flex; justify-content: center; padding: 100px;">
+        <div class="spinner">Processing Financial Data...</div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div class="modal-overlay" *ngIf="isEditModalOpen"
+        style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000;">
+        <div class="modal-card"
+            style="background: white; border-radius: 12px; padding: 24px; min-width: 500px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                <h3 style="margin: 0;">Edit Payroll: {{ editingRecord?.emp_id }}</h3>
+                <button (click)="closeEditModal()"
+                    style="background: none; border: none; font-size: 20px; cursor: pointer;">&times;</button>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <div class="form-group">
+                    <label>Basic Salary</label>
+                    <input type="number" class="mini-input" [(ngModel)]="editingRecord.basic_salary" />
+                </div>
+                <div class="form-group">
+                    <label>HRA</label>
+                    <input type="number" class="mini-input" [(ngModel)]="editingRecord.hra" />
+                </div>
+                <div class="form-group">
+                    <label>Transport Allw.</label>
+                    <input type="number" class="mini-input" [(ngModel)]="editingRecord.transport_allowance" />
+                </div>
+                <div class="form-group">
+                    <label>Dearness Allw.</label>
+                    <input type="number" class="mini-input" [(ngModel)]="editingRecord.dearness_allowance" />
+                </div>
+                <div class="form-group">
+                    <label>Medical Allw.</label>
+                    <input type="number" class="mini-input" [(ngModel)]="editingRecord.medical_allowance" />
+                </div>
+                <div class="form-group">
+                    <label>Special Allw.</label>
+                    <input type="number" class="mini-input" [(ngModel)]="editingRecord.special_allowance" />
+                </div>
+                <div class="form-group">
+                    <label>Other Allw.</label>
+                    <input type="number" class="mini-input" [(ngModel)]="editingRecord.other_allowances" />
+                </div>
+                <div class="form-group">
+                    <label>Overtime Amount</label>
+                    <input type="number" class="mini-input" [(ngModel)]="editingRecord.overtime_amount" />
+                </div>
+                <div class="form-group" style="grid-column: span 2;">
+                    <label style="color: #ef4444;">Total Deductions (Override)</label>
+                    <input type="number" class="mini-input" [(ngModel)]="editingRecord.total_deductions"
+                        style="border-color: #fecaca;" />
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">
+                <button class="btn-secondary" (click)="closeEditModal()">Cancel</button>
+                <button class="btn-primary" (click)="savePayrollChanges()">Save & Recalculate</button>
+            </div>
         </div>
+    </div>
 
-        <h3 *ngIf="!loading">Payslip History</h3>
+    <!-- Payment Modal for Disbursement -->
+    <div class="modal-overlay" *ngIf="isPaymentModalOpen"
+        style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1001;">
+        <div class="modal-card"
+            style="background: white; border-radius: 12px; padding: 24px; min-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                <h3 style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                    <i data-lucide="wallet" style="width: 20px;"></i> Record Disbursement
+                </h3>
+                <button (click)="closePaymentModal()"
+                    style="background: none; border: none; font-size: 20px; cursor: pointer;">&times;</button>
+            </div>
 
-        <div *ngIf="loading" class="loading">Loading records...</div>
+            <div style="background: #f8fafc; padding: 12px; border-radius: 8px; margin-bottom: 16px;">
+                <div style="font-size: 13px; color: #64748b;">Disbursing Amount</div>
+                <div style="font-size: 24px; font-weight: 700; color: #1e293b;">{{
+                    formatCurrency(paymentRecord?.net_salary || paymentRecord?.gross_salary) }}</div>
+                <div style="font-size: 12px; color: #64748b;">Gross: {{ formatCurrency(paymentRecord?.gross_salary)
+                    }}
+                </div>
+            </div>
 
-        <div *ngIf="!loading && myPayslips.length === 0" class="empty-state">
-            <p>No pay slips available yet.</p>
-        </div>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <div class="form-group">
+                    <label style="font-size: 12px; font-weight: 600; color: #475569;">Payment Method</label>
+                    <select [(ngModel)]="paymentDetails.method" class="form-control"
+                        style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                        <option *ngFor="let m of paymentMethods" [value]="m">{{ m }}</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label style="font-size: 12px; font-weight: 600; color: #475569;">Transaction / Reference
+                        ID</label>
+                    <input type="text" [(ngModel)]="paymentDetails.reference"
+                        placeholder="e.g. Bank Ref, Cheque No, or ID" class="form-control"
+                        style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                </div>
+                <div class="form-group">
+                    <label style="font-size: 12px; font-weight: 600; color: #475569;">Payment Date</label>
+                    <input type="date" [(ngModel)]="paymentDetails.date" class="form-control"
+                        style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                </div>
+            </div>
 
-        <div *ngIf="!loading && myPayslips.length > 0" class="payroll-table">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Month/Year</th>
-                        <th>Gross Salary</th>
-                        <th>Deductions</th>
-                        <th>Net Salary</th>
-                        <th>Status</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr *ngFor="let record of myPayslips">
-                        <td>{{ getMonthName(record.month) }} {{ record.year }}</td>
-                        <td>{{ formatCurrency(record.gross_salary) }}</td>
-                        <td class="deduction">{{ formatCurrency(record.total_deductions) }}</td>
-                        <td class="net-salary">{{ formatCurrency(record.net_salary) }}</td>
-                        <td>
-                            <span [class]="'status-badge status-' + record.status.toLowerCase()">
-                                {{ record.status }}
-                            </span>
-                        </td>
-                        <td>
-                            <button class="btn-download" (click)="downloadPayslip(record.id, record.emp_id)">
-                                <i data-lucide="download"></i> Download
-                            </button>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+            <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">
+                <button class="btn-secondary" (click)="closePaymentModal()">Cancel</button>
+                <button class="btn-success" (click)="confirmDisbursement()"
+                    style="background: #10b981; color: white; padding: 8px 16px; border-radius: 6px; border: none;">Confirm
+                    Payment</button>
+            </div>
         </div>
     </div>
 </div>

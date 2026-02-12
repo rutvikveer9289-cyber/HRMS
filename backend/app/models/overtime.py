@@ -3,7 +3,7 @@ Overtime Model
 Contains overtime tracking records
 """
 from sqlalchemy import Column, Integer, String, DateTime, DECIMAL, Date, ForeignKey, Unicode
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from decimal import Decimal
 import enum
 from app.models.base import Base, get_ist_now
@@ -22,7 +22,7 @@ class OvertimeRecord(Base):
     emp_id = Column(Unicode(50), ForeignKey("employees.emp_id", ondelete="CASCADE"), nullable=False, index=True)
     
     # Relationship to Employee
-    owner = relationship("Employee", primaryjoin="OvertimeRecord.emp_id == Employee.emp_id", foreign_keys=[emp_id], backref="overtime_records")
+    owner = relationship("Employee", primaryjoin="OvertimeRecord.emp_id == Employee.emp_id", foreign_keys=[emp_id], backref=backref("overtime_records", cascade="all, delete-orphan"))
     date = Column(Date, nullable=False, index=True)
     regular_hours = Column(DECIMAL(5, 2), default=Decimal('8.00'))
     actual_hours = Column(DECIMAL(5, 2), nullable=False)

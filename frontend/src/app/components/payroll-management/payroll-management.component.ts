@@ -16,6 +16,12 @@ import { DeductionService } from '../../services/deduction.service';
 })
 export class PayrollManagementComponent implements OnInit {
   activeTab: string = 'payroll';
+  showSummary: boolean = true;
+  activeStat: string | null = null; // Track which specific stat is expanded
+
+  toggleStat(stat: string): void {
+    this.activeStat = this.activeStat === stat ? null : stat;
+  }
 
   // Access Control
   canManagePayroll: boolean = false;
@@ -28,6 +34,7 @@ export class PayrollManagementComponent implements OnInit {
   myPayslips: any[] = []; // For employee view
   activeSalary: any = null; // For employee view
   loading: boolean = false;
+  isAllHistory: boolean = false;
   processSingleEmpId: string = '';
   paymentMethods: string[] = ['Bank Transfer', 'Cash', 'Check', 'UPI'];
 
@@ -66,6 +73,10 @@ export class PayrollManagementComponent implements OnInit {
 
   // Payment tracking
   paymentFilter: string = 'all'; // 'all', 'paid', 'pending'
+
+  // Edit Modal State
+  isEditModalOpen: boolean = false;
+  editingRecord: any = null;
 
   constructor(
     private payrollService: PayrollService,
@@ -202,11 +213,110 @@ export class PayrollManagementComponent implements OnInit {
     }
   }
 
+  // Edit Payroll Logic
+  editPayroll(record: any): void {
+    // Clone record to avoid direct mutation affecting the listview before save
+    this.editingRecord = { ...record };
+    this.isEditModalOpen = true;
+  }
+
+  closeEditModal(): void {
+    this.isEditModalOpen = false;
+    this.editingRecord = null;
+  }
+
+  savePayrollChanges(): void {
+    if (!this.editingRecord) return;
+
+    // Sanitize numeric fields to ensure keys are present and 0 is sent instead of null
+    const numericFields = [
+      'basic_salary', 'hra', 'transport_allowance', 'dearness_allowance',
+      'medical_allowance', 'special_allowance', 'other_allowances',
+      'overtime_amount', 'total_deductions'
+    ];
+
+    numericFields.forEach(key => {
+      // Use Number() to handle strings, and fallback to 0 if NaN/null/undefined
+      this.editingRecord[key] = Number(this.editingRecord[key]) || 0;
+    });
+
+    this.loading = true;
+    this.payrollService.updatePayrollDetails(this.editingRecord.id, this.editingRecord).subscribe({
+      next: (updatedRecord) => {
+        alert('Payroll record updated successfully');
+        this.closeEditModal();
+        this.loadPayrollRecords(); // Reload to reflect changes
+      },
+      error: (err) => {
+        console.error('Error updating payroll:', err);
+        alert('Error updating payroll: ' + (err.error?.detail || err.message));
+        this.loading = false;
+      }
+    });
+  }
+
+  // Payment Modal Logic
+  isPaymentModalOpen: boolean = false;
+  paymentRecord: any = null;
+  paymentDetails = {
+    method: 'Bank Transfer',
+    date: new Date().toISOString().split('T')[0],
+    reference: '',
+    note: ''
+  };
+
+  openPaymentModal(record: any): void {
+    this.paymentRecord = record;
+    this.paymentDetails = {
+      method: 'Bank Transfer',
+      date: new Date().toISOString().split('T')[0],
+      reference: '',
+      note: ''
+    };
+    this.isPaymentModalOpen = true;
+  }
+
+  closePaymentModal(): void {
+    this.isPaymentModalOpen = false;
+    this.paymentRecord = null;
+  }
+
+  confirmDisbursement(): void {
+    if (!this.paymentRecord) return;
+
+    if (!this.paymentDetails.reference && this.paymentDetails.method !== 'Cash') {
+      if (!confirm('Proceed without Transaction Reference?')) return;
+    }
+
+    this.loading = true;
+    this.payrollService.updatePaymentStatus(
+      this.paymentRecord.id,
+      'PAID',
+      this.paymentDetails.date,
+      this.paymentDetails.method,
+      this.paymentDetails.reference, // mapping reference to transaction_id
+      this.paymentDetails.reference  // mapping reference to UTR as well for completeness
+    ).subscribe({
+      next: () => {
+        alert('Payment Recorded Successfully');
+        this.closePaymentModal();
+        this.loadPayrollRecords();
+      },
+      error: (err) => {
+        console.error(err);
+        alert('Payment Failed: ' + (err.error?.detail || err.message));
+        this.loading = false;
+      }
+    });
+  }
+
   setActiveTab(tab: string): void {
     this.activeTab = tab;
 
     if (tab === 'payroll' && this.canManagePayroll) {
       this.loadPayrollRecords();
+    } else if (tab === 'history' && this.canManagePayroll) {
+      this.loadAllHistory();
     } else if (tab === 'overtime' && this.canManagePayroll) {
       this.loadPendingOvertimeApprovals();
     } else if (tab === 'deductions' && this.canManagePayroll) {
@@ -248,6 +358,7 @@ export class PayrollManagementComponent implements OnInit {
   // Payroll Methods
   loadPayrollRecords(): void {
     if (!this.canManagePayroll) return;
+    this.isAllHistory = false;
     this.loading = true;
     this.payrollService.getPayrollList(this.selectedMonth, this.selectedYear).subscribe({
       next: (data) => {
@@ -256,6 +367,31 @@ export class PayrollManagementComponent implements OnInit {
       },
       error: (err) => {
         console.error('Error loading payroll records:', err);
+        this.loading = false;
+      }
+    });
+  }
+
+  loadAllHistory(): void {
+    if (!this.canManagePayroll) return;
+
+    if (this.isAllHistory) {
+      // If already viewing history, toggle back to current month
+      this.isAllHistory = false;
+      this.loadPayrollRecords();
+      return;
+    }
+
+    this.isAllHistory = true;
+    this.loading = true;
+    this.payrollService.getAllPayroll().subscribe({
+      next: (data) => {
+        this.payrollRecords = data;
+        this.loading = false;
+      },
+      error: (err) => {
+        console.error('Error loading master history:', err);
+        alert('Error loading master history');
         this.loading = false;
       }
     });

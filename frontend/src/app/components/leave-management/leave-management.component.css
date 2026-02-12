@@ -437,6 +437,31 @@
   color: #dc2626;
 }
 
+.btn-cancel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fee2e2;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-cancel:hover {
+  background: #dc2626;
+  color: white;
+}
+
+.btn-cancel i {
+  width: 14px;
+  height: 14px;
+}
+
 .empty-state {
   text-align: center;
   padding: 60px;

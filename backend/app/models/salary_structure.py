@@ -3,6 +3,7 @@ Salary Structure Model
 Contains salary structure and related enums
 """
 from sqlalchemy import Column, Integer, String, DateTime, Boolean, DECIMAL, Date, ForeignKey, Unicode
+from sqlalchemy.orm import relationship, backref
 from decimal import Decimal
 import enum
 from app.models.base import Base, get_ist_now
@@ -13,6 +14,9 @@ class SalaryStructure(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     emp_id = Column(Unicode(50), ForeignKey("employees.emp_id", ondelete="CASCADE"), nullable=False, index=True)
+    
+    # Relationship to Employee
+    owner = relationship("Employee", primaryjoin="SalaryStructure.emp_id == Employee.emp_id", foreign_keys=[emp_id], backref=backref("salary_structures", cascade="all, delete-orphan"))
     basic_salary = Column(DECIMAL(10, 2), nullable=False)
     hra = Column(DECIMAL(10, 2), default=Decimal('0.00'))
     transport_allowance = Column(DECIMAL(10, 2), default=Decimal('0.00'))

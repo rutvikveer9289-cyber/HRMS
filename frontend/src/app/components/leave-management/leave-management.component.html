@@ -92,7 +92,7 @@
         pendingRequests.length
         }}</span>
     </button>
-    <button *ngIf="isCeo" [class.active]="activeTab === 'explorer'" (click)="switchTab('explorer')">
+    <button *ngIf="isHr || isCeo" [class.active]="activeTab === 'explorer'" (click)="switchTab('explorer')">
       <i data-lucide="search"></i> Leave Explorer
     </button>
   </nav>
@@ -128,7 +128,11 @@
     <div class="form-card">
       <div class="form-group">
         <label>Leave Type</label>
-        <div class="static-input">Paid Leave</div>
+        <select [(ngModel)]="newRequest.leave_type_id" class="form-control">
+          <option *ngFor="let type of leaveTypes" [value]="type.id">
+            {{ type.name }} (Quota: {{ type.annual_quota }})
+          </option>
+        </select>
       </div>
       <div class="form-row">
         <div class="form-group">
@@ -162,6 +166,7 @@
             <th>Days</th>
             <th>Status</th>
             <th>Approved By</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -203,6 +208,12 @@
                     CEO ✗
                   </span>
                 </div>
+              </td>
+              <td>
+                <button *ngIf="req.status === 'PENDING'" class="btn-cancel"
+                  (click)="cancelRequest(req.id); $event.stopPropagation()">
+                  <i data-lucide="trash-2"></i> Cancel
+                </button>
               </td>
             </tr>
             <tr *ngIf="expandedRequestId === req.id" class="details-row">

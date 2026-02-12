@@ -12,10 +12,9 @@ from app.services.payroll_service import PayrollService
 from app.services.pdf_service import PDFService
 from app.repositories.payroll_repository import PayrollRepository
 from app.repositories.employee_repository import EmployeeRepository
-from app.schemas.schemas import PayrollProcessRequest, PayrollRecordResponse, MessageResponse, PayrollStatusUpdate
+from app.schemas.schemas import PayrollProcessRequest, PayrollRecordResponse, MessageResponse, PayrollStatusUpdate, PayrollRecordUpdate
 from app.models.employee import Employee
 from datetime import date
-
 router = APIRouter(prefix="/payroll", tags=["Payroll"])
 
 @router.post("/process", response_model=PayrollRecordResponse, status_code=status.HTTP_201_CREATED)
@@ -25,7 +24,7 @@ async def process_payroll(
     current_user: Employee = Depends(get_current_user)
 ):
     """Process monthly payroll for employee"""
-    if current_user.role not in ["HR", "SUPER_ADMIN"]:
+    if current_user.role not in ["HR", "SUPER_ADMIN", "CEO"]:
         raise HTTPException(status_code=403, detail="Not authorized to process payroll")
     
     payroll_service = PayrollService(db)
@@ -44,7 +43,7 @@ async def process_all_payroll(
     current_user: Employee = Depends(get_current_user)
 ):
     """Process payroll for all employees for a month"""
-    if current_user.role not in ["HR", "SUPER_ADMIN"]:
+    if current_user.role not in ["HR", "SUPER_ADMIN", "CEO"]:
         raise HTTPException(status_code=403, detail="Not authorized")
     
     from app.repositories.salary_repository import SalaryRepository
@@ -82,6 +81,18 @@ async def get_payroll_list(
     
     payroll_service = PayrollService(db)
     return payroll_service.get_payroll_list(month=month, year=year)
+
+@router.get("/all", response_model=List[PayrollRecordResponse])
+async def get_all_payroll(
+    db: Session = Depends(get_db),
+    current_user: Employee = Depends(get_current_user)
+):
+    """Get all payroll records ever processed"""
+    if current_user.role not in ["HR", "SUPER_ADMIN", "CEO"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    payroll_service = PayrollService(db)
+    return payroll_service.get_all_payroll()
 
 @router.get("/{emp_id}/{month}/{year}", response_model=PayrollRecordResponse)
 async def get_payroll_record(
@@ -153,7 +164,7 @@ async def update_payment_status(
     current_user: Employee = Depends(get_current_user)
 ):
     """Update payroll payment status"""
-    if current_user.role not in ["HR", "SUPER_ADMIN"]:
+    if current_user.role not in ["HR", "SUPER_ADMIN", "CEO"]:
         raise HTTPException(status_code=403, detail="Not authorized")
     
     if request.status not in ["DRAFT", "PROCESSED", "PAID"]:
@@ -164,7 +175,9 @@ async def update_payment_status(
         payroll_id, 
         request.status, 
         request.payment_date,
-        request.payment_method
+        request.payment_method,
+        request.transaction_id,
+        request.utr_number
     )
 
 @router.get("/employee/{emp_id}", response_model=List[PayrollRecordResponse])
@@ -180,3 +193,21 @@ async def get_employee_payroll_history(
     
     payroll_repo = PayrollRepository(db)
     return payroll_repo.get_by_emp_id(emp_id, limit=limit)
+
+@router.put("/{payroll_id}", response_model=PayrollRecordResponse)
+async def update_payroll_details(
+    payroll_id: int,
+    request: PayrollRecordUpdate,
+    db: Session = Depends(get_db),
+    current_user: Employee = Depends(get_current_user)
+):
+    """Update processed payroll record (earnings/deductions)"""
+    if current_user.role not in ["HR", "SUPER_ADMIN", "CEO"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    payroll_service = PayrollService(db)
+    return payroll_service.update_payroll_record(
+        payroll_id=payroll_id,
+        update_data=request.model_dump(exclude_unset=True),
+        updated_by=current_user.emp_id
+    )

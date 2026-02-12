@@ -24,19 +24,29 @@ export class PayrollService {
     }
 
     getPayrollList(month: number, year: number): Observable<any[]> {
-        return this.http.get<any[]>(`${this.apiUrl}/list/${month}/${year}`);
+        return this.http.get<any[]>(`${this.apiUrl}/list/${month}/${year}?t=${new Date().getTime()}`);
+    }
+
+    getAllPayroll(): Observable<any[]> {
+        return this.http.get<any[]>(`${this.apiUrl}/all`);
     }
 
     downloadPayslip(payrollId: number): Observable<Blob> {
         return this.http.get(`${this.apiUrl}/download/${payrollId}`, { responseType: 'blob' });
     }
 
-    updatePaymentStatus(payrollId: number, status: string, paymentDate?: string, paymentMethod?: string): Observable<any> {
+    updatePaymentStatus(payrollId: number, status: string, paymentDate?: string, paymentMethod?: string, transactionId?: string, utrNumber?: string): Observable<any> {
         return this.http.put(`${this.apiUrl}/status/${payrollId}`, {
             status,
             payment_date: paymentDate,
-            payment_method: paymentMethod
+            payment_method: paymentMethod,
+            transaction_id: transactionId,
+            utr_number: utrNumber
         });
+    }
+
+    updatePayrollDetails(payrollId: number, data: any): Observable<any> {
+        return this.http.put(`${this.apiUrl}/${payrollId}`, data);
     }
 
     getEmployeePayrollHistory(empId: string, limit: number = 12): Observable<any[]> {

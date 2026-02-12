@@ -20,8 +20,8 @@ async def create_salary_structure(
     current_user: Employee = Depends(get_current_user)
 ):
     """Create new salary structure for employee"""
-    # Only HR and SUPER_ADMIN can create salary structures
-    if current_user.role not in ["HR", "SUPER_ADMIN"]:
+    # Only HR, SUPER_ADMIN, and CEO can create salary structures
+    if current_user.role not in ["HR", "SUPER_ADMIN", "CEO"]:
         raise HTTPException(status_code=403, detail="Not authorized to create salary structures")
     
     salary_service = SalaryService(db)
@@ -67,7 +67,7 @@ async def update_salary_structure(
     current_user: Employee = Depends(get_current_user)
 ):
     """Update existing salary structure"""
-    if current_user.role not in ["HR", "SUPER_ADMIN"]:
+    if current_user.role not in ["HR", "SUPER_ADMIN", "CEO"]:
         raise HTTPException(status_code=403, detail="Not authorized to update salary structures")
     
     salary_service = SalaryService(db)

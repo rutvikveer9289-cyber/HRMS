@@ -3,7 +3,7 @@ Payroll Model
 Contains payroll records
 """
 from sqlalchemy import Column, Integer, String, DateTime, DECIMAL, Date, ForeignKey, Unicode
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from decimal import Decimal
 import enum
 from app.models.base import Base, get_ist_now
@@ -22,7 +22,7 @@ class PayrollRecord(Base):
     emp_id = Column(Unicode(50), ForeignKey("employees.emp_id", ondelete="CASCADE"), nullable=False, index=True)
     
     # Relationship to Employee
-    owner = relationship("Employee", primaryjoin="PayrollRecord.emp_id == Employee.emp_id", foreign_keys=[emp_id], backref="payroll_records")
+    owner = relationship("Employee", primaryjoin="PayrollRecord.emp_id == Employee.emp_id", foreign_keys=[emp_id], backref=backref("payroll_records", cascade="all, delete-orphan"))
     month = Column(Integer, nullable=False)
     year = Column(Integer, nullable=False)
     basic_salary = Column(DECIMAL(10, 2), nullable=False)
@@ -38,8 +38,10 @@ class PayrollRecord(Base):
     net_salary = Column(DECIMAL(10, 2), nullable=False)
     deduction_details = Column(String, nullable=True)  # JSON string
     working_days = Column(Integer, nullable=True)
-    present_days = Column(Integer, nullable=True)
-    absent_days = Column(Integer, nullable=True)
+    present_days = Column(DECIMAL(5, 1), nullable=True)
+    absent_days = Column(DECIMAL(5, 1), nullable=True)
+    on_leave_days = Column(Integer, nullable=True)
+    half_days = Column(Integer, nullable=True)
     overtime_hours = Column(DECIMAL(5, 2), default=Decimal('0.00'))
     status = Column(String(20), default="DRAFT")
     processed_at = Column(DateTime, nullable=True)

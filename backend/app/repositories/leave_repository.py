@@ -140,6 +140,13 @@ class LeaveRepository:
         """Delete holiday"""
         self.db.delete(holiday)
 
+    def get_holidays_in_range(self, start_date: date, end_date: date) -> List[Holiday]:
+        """Get holidays within a date range"""
+        return self.db.query(Holiday).filter(
+            Holiday.date >= start_date,
+            Holiday.date <= end_date
+        ).all()
+
     def flush(self) -> None:
         """Flush changes"""
         self.db.flush()

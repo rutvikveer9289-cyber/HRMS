@@ -41,8 +41,8 @@ export class AppComponent implements OnInit {
     // Subscribe to current user for navigation and profile display
     this.authService.currentUser$.subscribe(user => {
       this.currentUser = user;
-      this.isAdmin = user?.role === 'SUPER_ADMIN';
-      this.isHr = user?.role === 'HR' || user?.role === 'SUPER_ADMIN';
+      this.isAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'CEO';
+      this.isHr = user?.role === 'HR' || user?.role === 'SUPER_ADMIN' || user?.role === 'CEO';
       this.isCeo = user?.role === 'CEO' || user?.role === 'SUPER_ADMIN';
     });
 

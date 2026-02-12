@@ -173,6 +173,22 @@ def get_my_requests(
     service = LeaveService(db)
     return service.get_my_requests(user.emp_id)
 
+@router.delete("/{id}")
+def delete_leave_request(
+    id: int,
+    user: Employee = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Delete a leave request
+    
+    - Can only delete own requests
+    - Can only delete PENDING requests
+    - Admin can delete any request
+    """
+    service = LeaveService(db)
+    return service.delete_request(id, user)
+
 # --- HR Approval Endpoints ---
 
 @router.get("/hr/pending", tags=["HR"])

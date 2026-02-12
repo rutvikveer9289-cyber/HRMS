@@ -60,6 +60,11 @@ class RazorpayPayoutService:
             return contact['id']
             
         except Exception as e:
+            if "PLACEHOLDER" in self.key_id or "YOUR_KEY" in self.key_id:
+                logger.info("SIMULATING Razorpay Contact Creation")
+                import uuid
+                return f"cont_{uuid.uuid4().hex[:14]}"
+            
             logger.error(f"Error creating contact for {employee_data['emp_id']}: {str(e)}")
             raise
     
@@ -92,6 +97,11 @@ class RazorpayPayoutService:
             return fund_account['id']
             
         except Exception as e:
+            if "PLACEHOLDER" in self.key_id or "YOUR_KEY" in self.key_id:
+                logger.info("SIMULATING Razorpay Fund Account Creation")
+                import uuid
+                return f"fa_{uuid.uuid4().hex[:14]}"
+
             logger.error(f"Error creating fund account: {str(e)}")
             raise
     
@@ -107,20 +117,24 @@ class RazorpayPayoutService:
     ) -> Dict:
         """
         Create a payout (transfer money)
-        
-        Args:
-            fund_account_id: Razorpay fund account ID
-            amount: Amount in rupees (will be converted to paise)
-            currency: Currency code (default: INR)
-            mode: Transfer mode (IMPS/NEFT/RTGS)
-            purpose: Purpose of payment (salary/bonus/reimbursement)
-            reference_id: Your internal reference ID
-            narration: Description for bank statement
-        
-        Returns:
-            Dict containing payout details including transaction ID
         """
         try:
+            # SIMULATION MODE for Placeholder Keys
+            if "PLACEHOLDER" in self.key_id or "YOUR_KEY" in self.key_id:
+                logger.info("SIMULATING RazyPay Payout (Test Mode)")
+                import uuid
+                fake_id = f"pout_{uuid.uuid4().hex[:14]}"
+                fake_utr = f"UTR{uuid.uuid4().hex[:10].upper()}"
+                return {
+                    'payout_id': fake_id,
+                    'status': 'processed',
+                    'utr': fake_utr,
+                    'amount': amount,
+                    'mode': mode,
+                    'created_at': datetime.now(),
+                    'simulation': True
+                }
+
             # Convert rupees to paise (Razorpay uses smallest currency unit)
             amount_paise = int(amount * 100)
             
@@ -343,3 +357,4 @@ def get_razorpay_service() -> RazorpayPayoutService:
     if _razorpay_service is None:
         _razorpay_service = RazorpayPayoutService()
     return _razorpay_service
+                                        

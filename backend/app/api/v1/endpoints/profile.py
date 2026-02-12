@@ -20,6 +20,7 @@ class ProfileUpdate(BaseModel):
     designation: Optional[str] = None
     bank_name: Optional[str] = None
     bank_account_no: Optional[str] = None
+    bank_ifsc_code: Optional[str] = None
     location: Optional[str] = None
     department: Optional[str] = None
 
@@ -45,7 +46,8 @@ async def get_my_profile(
         "department": user.department,
         "location": user.location,
         "bank_name": user.bank_name,
-        "bank_account_no": user.bank_account_no
+        "bank_account_no": user.bank_account_no,
+        "bank_ifsc_code": user.bank_ifsc_code
     }
 
 @router.put("/me")
@@ -60,12 +62,21 @@ async def update_my_profile(
     - Updates user's own profile
     - Limited fields (no role/status change)
     """
-    repo = EmployeeRepository(db)
-    
-    update_dict = data.dict(exclude_unset=True)
-    for key, value in update_dict.items():
-        if hasattr(user, key):
-            setattr(user, key, value)
-    
-    repo.update(user)
-    return {"message": "Profile updated successfully"}
+    try:
+        repo = EmployeeRepository(db)
+        
+        # Merge user into current session to avoid detached instance error
+        user = db.merge(user)
+        
+        # Use model_dump for Pydantic v2 compatibility
+        update_dict = data.model_dump(exclude_unset=True)
+        for key, value in update_dict.items():
+            if hasattr(user, key):
+                setattr(user, key, value)
+        
+        repo.update(user)
+        return {"message": "Profile updated successfully"}
+    except Exception as e:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=500, detail=f"Failed to update profile: {str(e)}")
+

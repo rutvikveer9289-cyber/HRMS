@@ -121,25 +121,44 @@ def complete_onboarding(
             
             # Switch to alternate email
             target_email = alt_email
-            data.email = alt_email # Update input data
-            employee = None # Treat as NEW employee
-        # If employee is PENDING, we proceed to update (valid onboarding flow)
+            # Treat as NEW employee, so we reset employee variable
+            employee = None 
+
+    # Check if emp_id already exists for ANOTHER employee
+    existing_id_holder = repo.get_by_emp_id(data.emp_id)
+    if existing_id_holder:
+        # If ID exists and it's NOT the same employee we are updating (or we are creating new)
+        if not employee or existing_id_holder.id != employee.id:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Employee ID {data.emp_id} is already assigned to {existing_id_holder.full_name}"
+            )
 
     if not employee:
         # Create new employee if they don't exist
-        employee_data = data.dict()
+        # Use model_dump for Pydantic v2
+        employee_data = data.model_dump()
         employee_data["email"] = target_email # Ensure email is set
         employee_data["status"] = UserStatus.PENDING # Initial status
-        employee = repo.create(employee_data)
-    
-    # Check if emp_id already exists
-    if repo.exists_by_emp_id(data.emp_id):
-        raise HTTPException(
-            status_code=400,
-            detail="Employee ID already exists"
+        
+        # We need to remove fields not in Employee model if any?
+        # Employee model has fields matching schema mostly.
+        # But let's create with minimal required and update later to be safe
+        
+        # Actually repo.create expects dict matching model fields.
+        # Let's create empty first or with safe fields
+        
+        # Create new instance
+        employee = Employee(
+            email=target_email,
+            emp_id=data.emp_id, # We already checked availability
+            status=UserStatus.PENDING
         )
+        db.add(employee)
+        db.commit()
+        db.refresh(employee)
     
-    # Update employee
+    # Update employee details
     employee.emp_id = data.emp_id
     employee.full_name = data.full_name
     employee.first_name = data.first_name

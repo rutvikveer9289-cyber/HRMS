@@ -126,6 +126,7 @@ class EmployeeResponse(BaseModel):
     location: Optional[str] = None
     bank_name: Optional[str] = None
     bank_account_no: Optional[str] = None
+    bank_ifsc_code: Optional[str] = None
     
     model_config = ConfigDict(from_attributes=True)
 
@@ -135,6 +136,11 @@ class EmployeeUpdate(BaseModel):
     full_name: Optional[str] = Field(None, max_length=200)
     phone_number: Optional[str] = Field(None, max_length=20)
     designation: Optional[str] = Field(None, max_length=100)
+    department: Optional[str] = None
+    location: Optional[str] = None
+    bank_name: Optional[str] = None
+    bank_account_no: Optional[str] = None
+    bank_ifsc_code: Optional[str] = None
 
 
 # ============================================================================
@@ -331,11 +337,27 @@ class PayrollProcessRequest(BaseModel):
     year: int = Field(..., ge=2020, le=2100)
 
 
+class PayrollRecordUpdate(BaseModel):
+    """Schema for updating payroll record details"""
+    basic_salary: Optional[float] = Field(None, ge=0)
+    hra: Optional[float] = Field(None, ge=0)
+    transport_allowance: Optional[float] = Field(None, ge=0)
+    dearness_allowance: Optional[float] = Field(None, ge=0)
+    medical_allowance: Optional[float] = Field(None, ge=0)
+    special_allowance: Optional[float] = Field(None, ge=0)
+    other_allowances: Optional[float] = Field(None, ge=0)
+    overtime_amount: Optional[float] = Field(None, ge=0)
+    total_deductions: Optional[float] = Field(None, ge=0)
+    remarks: Optional[str] = Field(None, max_length=500)
+
+
 class PayrollStatusUpdate(BaseModel):
     """Schema for updating payroll payment status"""
     status: str
     payment_date: Optional[datetime.date] = None
     payment_method: Optional[str] = None
+    transaction_id: Optional[str] = None
+    utr_number: Optional[str] = None
 
 
 class PayrollRecordResponse(BaseModel):
@@ -362,6 +384,8 @@ class PayrollRecordResponse(BaseModel):
     status: str
     payment_date: Optional[datetime.date] = None
     payment_method: Optional[str] = None
+    transaction_id: Optional[str] = None
+    utr_number: Optional[str] = None
     created_at: datetime.datetime
     owner: Optional[EmployeeResponse] = None
     

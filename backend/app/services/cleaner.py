@@ -147,10 +147,10 @@ def detect_and_clean_memory(file_content):
                                 
                             total_min = parse_to_min(total_duration)
                             
-                            is_present = total_min >= 420 and punch_count >= 4 # 7 hours
-                            
-                            if is_present:
+                            if total_min >= 420 and punch_count >= 4:
                                 status = "Present"
+                            elif total_min >= 210: # 3.5 hours
+                                status = "Half Day"
                             else:
                                 status = "Absent"
 

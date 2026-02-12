@@ -91,8 +91,10 @@ class PayrollService:
             "net_salary": net_salary,
             "deduction_details": json.dumps(deductions),
             "working_days": working_days,
-            "present_days": attendance_data['present_days'],
-            "absent_days": attendance_data['absent_days'],
+            "present_days": Decimal(str(attendance_data['present_days'])),
+            "absent_days": Decimal(str(attendance_data['absent_days'])),
+            "on_leave_days": attendance_data['on_leave_days'],
+            "half_days": attendance_data['half_days'],
             "overtime_hours": overtime_hours,
             "status": "PROCESSED",
             "processed_by": processed_by
@@ -107,7 +109,7 @@ class PayrollService:
             raise HTTPException(status_code=404, detail="Payroll record not found")
         return payroll
     
-    def update_payment_status(self, payroll_id: int, status: str, payment_date: date = None, payment_method: str = None):
+    def update_payment_status(self, payroll_id: int, status: str, payment_date: date = None, payment_method: str = None, transaction_id: str = None, utr_number: str = None):
         """Update payroll payment status"""
         payroll = self.payroll_repo.get_by_id(payroll_id)
         if not payroll:
@@ -118,7 +120,52 @@ class PayrollService:
             payroll.payment_date = payment_date
         if payment_method:
             payroll.payment_method = payment_method
+        if transaction_id:
+            payroll.transaction_id = transaction_id
+        if utr_number:
+            payroll.utr_number = utr_number
         
+        return self.payroll_repo.update(payroll)
+
+    def update_payroll_record(self, payroll_id: int, update_data: dict, updated_by: str = None):
+        """Update payroll record details and recalculate totals"""
+        payroll = self.payroll_repo.get_by_id(payroll_id)
+        if not payroll:
+            raise HTTPException(status_code=404, detail="Payroll record not found")
+        
+        if payroll.status == "PAID":
+            raise HTTPException(status_code=400, detail="Cannot edit a PAID payroll record")
+
+        # Update fields
+        for key, value in update_data.items():
+            if value is not None and hasattr(payroll, key):
+                # Convert float to Decimal for currency fields
+                if key in ['basic_salary', 'hra', 'transport_allowance', 'dearness_allowance', 
+                          'medical_allowance', 'special_allowance', 'other_allowances', 
+                          'overtime_amount', 'total_deductions']:
+                    setattr(payroll, key, Decimal(str(value)))
+                else:
+                    setattr(payroll, key, value)
+        
+        # Recalculate Gross Salary
+        gross = (
+            payroll.basic_salary + 
+            payroll.hra + 
+            payroll.transport_allowance + 
+            payroll.dearness_allowance + 
+            payroll.medical_allowance + 
+            payroll.special_allowance + 
+            payroll.other_allowances + 
+            payroll.overtime_amount
+        )
+        payroll.gross_salary = gross
+        
+        # Recalculate Net Salary
+        payroll.net_salary = gross - payroll.total_deductions
+
+        if updated_by:
+             payroll.processed_by = updated_by # Optionally track who updated it last
+
         return self.payroll_repo.update(payroll)
     
     def get_payroll_list(self, month: int = None, year: int = None, status: str = None):
@@ -129,6 +176,10 @@ class PayrollService:
             return self.payroll_repo.get_by_status(status)
         else:
             raise HTTPException(status_code=400, detail="Please provide month/year or status filter")
+    
+    def get_all_payroll(self):
+        """Get list of all payroll records"""
+        return self.payroll_repo.get_all()
     
     def _calculate_deductions(self, emp_id: str, salary) -> list:
         """Calculate all deductions for employee"""
@@ -178,11 +229,21 @@ class PayrollService:
         attendance_records = self.attendance_repo.get_by_emp_date_range(emp_id, start_date, end_date)
         
         present_days = len([a for a in attendance_records if a.attendance_status == "Present"])
+        half_days = len([a for a in attendance_records if a.attendance_status == "Half Day"])
+        on_leave_days = len([a for a in attendance_records if a.attendance_status == "On Leave"])
         working_days = self._get_working_days(month, year)
-        absent_days = working_days - present_days
+        
+        # Effective present days (Full + 0.5 * Half)
+        effective_present = float(present_days) + (float(half_days) * 0.5)
+        
+        # Absent is whatever is not explicitly Present, Half Day, or On Leave
+        # Plus the missing half from Half Days
+        absent_days = max(0.0, float(working_days) - effective_present - float(on_leave_days))
         
         return {
-            "present_days": present_days,
+            "present_days": effective_present,
+            "on_leave_days": on_leave_days,
+            "half_days": half_days,
             "absent_days": absent_days,
             "working_days": working_days
         }

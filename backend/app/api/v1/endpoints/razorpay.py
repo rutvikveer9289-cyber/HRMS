@@ -10,14 +10,14 @@ from pydantic import BaseModel
 import logging
 
 from app.core.database import get_db
-from app.core.auth import get_current_user
-from app.models.payroll import Payroll
+from app.api.dependencies.auth import get_current_user
+from app.models.payroll import PayrollRecord as Payroll
 from app.models.employee import Employee
 from app.services.razorpay_service import get_razorpay_service
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/razorpay", tags=["Razorpay Payments"])
+router = APIRouter()
 
 
 class PayoutRequest(BaseModel):
@@ -41,7 +41,7 @@ class PayoutStatusRequest(BaseModel):
 def process_single_payout(
     request: PayoutRequest,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: Employee = Depends(get_current_user)
 ):
     """
     Process a single payout via Razorpay
@@ -51,7 +51,7 @@ def process_single_payout(
     - Updates payroll status automatically
     """
     # Check permissions
-    if current_user['role'] not in ['HR', 'SUPER_ADMIN', 'CEO']:
+    if current_user.role not in ['HR', 'SUPER_ADMIN', 'CEO']:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only HR/Admin/CEO can process payments"
@@ -81,7 +81,7 @@ def process_single_payout(
         )
     
     # Validate bank details
-    if not employee.bank_account_no or not employee.bank_ifsc:
+    if not employee.bank_account_no or not employee.bank_ifsc_code:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Bank details not available for employee {employee.emp_id}"
@@ -101,7 +101,7 @@ def process_single_payout(
             },
             bank_details={
                 'account_number': employee.bank_account_no,
-                'ifsc': employee.bank_ifsc,
+                'ifsc': employee.bank_ifsc_code,
                 'name': employee.full_name
             },
             amount=float(payroll.net_salary),
@@ -147,7 +147,7 @@ def process_single_payout(
 def process_bulk_payouts(
     request: BulkPayoutRequest,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: Employee = Depends(get_current_user)
 ):
     """
     Process multiple payouts in bulk via Razorpay
@@ -157,7 +157,7 @@ def process_bulk_payouts(
     - Returns detailed results for each payment
     """
     # Check permissions
-    if current_user['role'] not in ['HR', 'SUPER_ADMIN', 'CEO']:
+    if current_user.role not in ['HR', 'SUPER_ADMIN', 'CEO']:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only HR/Admin/CEO can process payments"
@@ -180,7 +180,7 @@ def process_bulk_payouts(
     for payroll in payrolls:
         employee = db.query(Employee).filter(Employee.emp_id == payroll.emp_id).first()
         
-        if not employee or not employee.bank_account_no or not employee.bank_ifsc:
+        if not employee or not employee.bank_account_no or not employee.bank_ifsc_code:
             logger.warning(f"Skipping {payroll.emp_id}: Missing bank details")
             continue
         
@@ -191,7 +191,7 @@ def process_bulk_payouts(
             'employee_email': employee.email,
             'employee_phone': employee.phone_number,
             'bank_account_no': employee.bank_account_no,
-            'bank_ifsc': employee.bank_ifsc,
+            'bank_ifsc': employee.bank_ifsc_code,
             'net_salary': float(payroll.net_salary)
         })
     
@@ -243,7 +243,7 @@ def process_bulk_payouts(
 @router.post("/payout/status")
 def check_payout_status(
     request: PayoutStatusRequest,
-    current_user: dict = Depends(get_current_user)
+    current_user: Employee = Depends(get_current_user)
 ):
     """
     Check status of a payout
@@ -269,7 +269,7 @@ def check_payout_status(
 
 
 @router.get("/balance")
-def get_account_balance(current_user: dict = Depends(get_current_user)):
+def get_account_balance(current_user: Employee = Depends(get_current_user)):
     """
     Get Razorpay account balance
     
@@ -277,7 +277,7 @@ def get_account_balance(current_user: dict = Depends(get_current_user)):
     - Shows available balance for payouts
     """
     # Check permissions
-    if current_user['role'] not in ['HR', 'SUPER_ADMIN', 'CEO']:
+    if current_user.role not in ['HR', 'SUPER_ADMIN', 'CEO']:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only HR/Admin/CEO can view balance"
@@ -301,7 +301,7 @@ def get_account_balance(current_user: dict = Depends(get_current_user)):
 
 
 @router.get("/test-connection")
-def test_razorpay_connection(current_user: dict = Depends(get_current_user)):
+def test_razorpay_connection(current_user: Employee = Depends(get_current_user)):
     """
     Test Razorpay API connection
     
@@ -309,7 +309,7 @@ def test_razorpay_connection(current_user: dict = Depends(get_current_user)):
     - Checks account status
     """
     # Check permissions
-    if current_user['role'] not in ['HR', 'SUPER_ADMIN', 'CEO']:
+    if current_user.role not in ['HR', 'SUPER_ADMIN', 'CEO']:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only HR/Admin/CEO can test connection"

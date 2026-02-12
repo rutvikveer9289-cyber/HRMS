@@ -1,36 +1,45 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <title>RBIS_HRMS</title>
-    <base href="/" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="icon" type="image/x-icon" href="favicon.ico" />
-    <script src="https://unpkg.com/lucide@latest"></script>
-  </head>
-  <body>
-    <app-root></app-root>
-    <script>
-      // Initialize icons with recursion protection
-      function safeCreateIcons() {
-        if (typeof lucide !== "undefined") {
-          lucide.createIcons();
-        }
+
+<head>
+  <meta charset="utf-8" />
+  <title>RBIS_HRMS</title>
+  <base href="/" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" type="image/x-icon" href="favicon.ico" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+
+<body>
+  <app-root></app-root>
+  <script>
+    // Initialize icons with recursion protection
+    function safeCreateIcons() {
+      if (typeof lucide !== "undefined") {
+        lucide.createIcons();
       }
+    }
 
-      // Initial call
+    // Initial call
+    safeCreateIcons();
+
+    // Watch for DOM changes to re-initialize icons in Angular SPA
+    const observer = new MutationObserver((mutations) => {
+      // Disconnect to avoid infinite loop when Lucide modifies the DOM
+      observer.disconnect();
       safeCreateIcons();
-
-      // Watch for DOM changes to re-initialize icons in Angular SPA
-      const observer = new MutationObserver((mutations) => {
-        // Disconnect to avoid infinite loop when Lucide modifies the DOM
-        observer.disconnect();
-        safeCreateIcons();
-        // Re-observe
-        observer.observe(document.body, { childList: true, subtree: true });
-      });
-
+      // Re-observe
       observer.observe(document.body, { childList: true, subtree: true });
-    </script>
-  </body>
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+  </script>
+</body>
+
 </html>
