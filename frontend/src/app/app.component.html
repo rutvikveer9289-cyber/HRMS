@@ -1,5 +1,5 @@
 <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@500&display=swap" rel="stylesheet">
-<div class="app-layout-wrapper" *ngIf="authService.isLoggedIn()">
+<div class="app-layout-wrapper" *ngIf="authService.isLoggedIn() && router.url !== '/login' && router.url !== '/signup'">
   <!-- Top Header -->
   <header class="app-header">
     <div class="header-left">
@@ -26,8 +26,8 @@
 
     <div class="header-right">
       <!-- Action Center (Notifications) -->
-      <div class="header-action-item notification-trigger" (click)="toggleNotificationMenu()"
-        [class.active]="notificationMenuOpen">
+      <div class="header-action-item notification-trigger" *ngIf="router.url !== '/login' && router.url !== '/signup'"
+        (click)="toggleNotificationMenu()" [class.active]="notificationMenuOpen">
         <i data-lucide="bell"></i>
         <span class="notification-badge" *ngIf="unreadCount > 0">{{ unreadCount }}</span>
 
@@ -145,15 +145,15 @@
   </div>
 </div>
 
-<!-- Login/Signup View -->
-<div *ngIf="!authService.isLoggedIn()">
+<!-- Auth Pages View (Standalone) -->
+<div *ngIf="!authService.isLoggedIn() || router.url === '/login' || router.url === '/signup'">
   <router-outlet></router-outlet>
 </div>
 
 <!-- Global Notifications -->
 <div class="alerts-container">
   <div *ngFor="let alert of alerts" class="alert-toast" [class]="alert.type">
-    <div class="alert-icon">
+    <div class="alert-icon" *ngIf="router.url !== '/login' && router.url !== '/signup'">
       <i *ngIf="alert.type === 'success'" data-lucide="check-circle"></i>
       <i *ngIf="alert.type === 'error'" data-lucide="alert-circle"></i>
       <i *ngIf="alert.type === 'info'" data-lucide="info"></i>
