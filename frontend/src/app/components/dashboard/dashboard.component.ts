@@ -10,6 +10,7 @@ import { RouterModule } from '@angular/router';
 import { NotificationService } from '../../services/notification.service';
 import { LeaveService } from '../../services/leave.service';
 import { StatsGridComponent } from './stats-grid.component';
+import { CommunicationService, Announcement } from '../../services/communication.service';
 
 Chart.register(...registerables);
 
@@ -26,6 +27,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
     isAdmin = false;
     canViewAll = false;
     showStatsCards = false;
+
+    // Announcements
+    announcements: Announcement[] = [];
+    showNoticeModal = false;
+    newNotice = { title: '', content: '' };
+    isPosting = false;
 
     // Drill Down State
     showDrillDown = false;
@@ -129,14 +136,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
         private attendanceService: AttendanceService,
         public authService: AuthService,
         private notificationService: NotificationService,
-        private leaveService: LeaveService
+        private leaveService: LeaveService,
+        private commService: CommunicationService
     ) { }
 
     ngOnInit() {
         const user = this.authService.currentUser;
-        this.isAdmin = this.authService.getUserRole() === 'SUPER_ADMIN';
+        this.isAdmin = ['SUPER_ADMIN', 'CEO'].includes(this.authService.getUserRole() || '');
         const role = this.authService.getUserRole();
         this.canViewAll = this.isAdmin || role === 'HR' || role === 'CEO';
+
+        this.loadAnnouncements();
 
         if (!this.canViewAll && user) {
             this.selectedEmp = user.emp_id;
@@ -165,7 +175,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.subs.add(this.authService.currentUser$.subscribe(u => {
             if (u) {
                 const r = u.role;
-                this.isAdmin = r === 'SUPER_ADMIN';
+                this.isAdmin = r === 'SUPER_ADMIN' || r === 'CEO';
                 this.canViewAll = this.isAdmin || r === 'HR' || r === 'CEO';
 
                 if (!this.canViewAll) {
@@ -488,5 +498,46 @@ export class DashboardComponent implements OnInit, OnDestroy {
             }
             return isNaN(Number(s)) ? 0 : Number(s);
         } catch { return 0; }
+    }
+
+    // Announcement Logic
+    loadAnnouncements() {
+        this.commService.getAnnouncements().subscribe(data => this.announcements = data);
+    }
+
+    toggleNoticeModal() {
+        this.showNoticeModal = !this.showNoticeModal;
+        if (!this.showNoticeModal) {
+            this.newNotice = { title: '', content: '' };
+        }
+    }
+
+    postAnnouncement() {
+        if (!this.newNotice.title || !this.newNotice.content) {
+            this.notificationService.showAlert('Please fill all fields', 'error');
+            return;
+        }
+        this.isPosting = true;
+        this.commService.postAnnouncement(this.newNotice).subscribe({
+            next: () => {
+                this.notificationService.showAlert('Announcement posted!', 'success');
+                this.loadAnnouncements();
+                this.toggleNoticeModal();
+                this.isPosting = false;
+            },
+            error: () => {
+                this.notificationService.showAlert('Failed to post announcement', 'error');
+                this.isPosting = false;
+            }
+        });
+    }
+
+    deleteAnnouncement(id: number) {
+        if (confirm('Are you sure you want to delete this announcement?')) {
+            this.commService.deleteAnnouncement(id).subscribe(() => {
+                this.notificationService.showAlert('Announcement deleted', 'info');
+                this.loadAnnouncements();
+            });
+        }
     }
 }

@@ -45,7 +45,7 @@ export class AnalyticsComponent implements OnInit, OnDestroy {
   ngOnInit() {
     const role = this.authService.currentUser?.role;
     this.canViewAll = role === 'SUPER_ADMIN' || role === 'HR' || role === 'CEO';
-    this.isSuperAdmin = role === 'SUPER_ADMIN';
+    this.isSuperAdmin = role === 'SUPER_ADMIN' || role === 'CEO';
 
     // For non-admin employees, default searchTerm to their own ID
     if (!this.canViewAll && this.authService.currentUser?.emp_id) {

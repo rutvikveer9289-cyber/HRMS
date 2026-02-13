@@ -38,7 +38,7 @@ export class AttendanceOperationsComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     const role = this.authService.getUserRole();
-    this.isAdmin = role === 'SUPER_ADMIN';
+    this.isAdmin = role === 'SUPER_ADMIN' || role === 'CEO';
     this.isHr = role === 'HR' || this.isAdmin;
     this.isCeo = role === 'CEO' || this.isAdmin;
 

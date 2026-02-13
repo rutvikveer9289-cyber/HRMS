@@ -1,4 +1,4 @@
-import { Component, ElementRef, HostListener, OnInit, ViewChild, AfterViewInit, OnDestroy } from '@angular/core';
+import { Component, ElementRef, HostListener, OnInit, ViewChild, AfterViewInit, OnDestroy, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 interface Particle {
@@ -42,7 +42,7 @@ export class ParticleBgComponent implements OnInit, AfterViewInit, OnDestroy {
   };
   private animationId!: number;
 
-  private techStack = ['Angular', '.NET', 'RBIS','Python', 'AI', 'ML', 'SQL', 'Cloud', 'ERP'];
+  private techStack = ['Angular', '.NET', 'RBIS', 'Python', 'AI', 'ML', 'SQL', 'Cloud', 'ERP'];
   private colors = [
     'rgba(86, 77, 253, 0.21)',   // Soft Indigo
     'rgba(59, 131, 246, 0.35)',   // Soft Blue
@@ -51,14 +51,20 @@ export class ParticleBgComponent implements OnInit, AfterViewInit, OnDestroy {
     'rgba(148, 163, 184, 0.2)'    // Soft Slate
   ];
 
-  ngOnInit(): void {}
+  constructor(private ngZone: NgZone) { }
+
+  ngOnInit(): void { }
 
   ngAfterViewInit(): void {
     const canvas = this.canvasRef.nativeElement;
     this.ctx = canvas.getContext('2d')!;
     this.resizeCanvas();
     this.initParticles();
-    this.animate();
+
+    // CRITICAL: Run animation outside Angular zone to prevent 60fps Change Detection
+    this.ngZone.runOutsideAngular(() => {
+      this.animate();
+    });
   }
 
   ngOnDestroy(): void {
@@ -89,7 +95,7 @@ export class ParticleBgComponent implements OnInit, AfterViewInit, OnDestroy {
     this.particles = [];
     // Much fewer particles for a truly minimalist, professional feel
     const numberOfParticles = Math.floor((window.innerWidth * window.innerHeight) / 45000);
-    
+
     // Shuffle tech stack to get diverse initial labels
     const shuffledTech = [...this.techStack].sort(() => Math.random() - 0.5);
 
@@ -97,7 +103,7 @@ export class ParticleBgComponent implements OnInit, AfterViewInit, OnDestroy {
       let x = Math.random() * window.innerWidth;
       let y = Math.random() * window.innerHeight;
       const size = Math.random() * 40 + 40; // 40 to 80px
-      
+
       // Simple check to avoid initial overlapping
       let overlapping = false;
       for (let j = 0; j < this.particles.length; j++) {
@@ -109,11 +115,11 @@ export class ParticleBgComponent implements OnInit, AfterViewInit, OnDestroy {
           break;
         }
       }
-      
+
       if (overlapping && i > 0) {
-          // If overlaps, try again once or just scatter far
-          x = Math.random() * window.innerWidth;
-          y = Math.random() * window.innerHeight;
+        // If overlaps, try again once or just scatter far
+        x = Math.random() * window.innerWidth;
+        y = Math.random() * window.innerHeight;
       }
 
       this.particles.push({
@@ -132,7 +138,7 @@ export class ParticleBgComponent implements OnInit, AfterViewInit, OnDestroy {
   private animate(): void {
     this.animationId = requestAnimationFrame(this.animate.bind(this));
     this.ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
-    
+
     // Smooth background gradient - extra light for minimalism
     const gradient = this.ctx.createLinearGradient(0, 0, window.innerWidth, window.innerHeight);
     gradient.addColorStop(0, '#ffffff');
@@ -142,8 +148,8 @@ export class ParticleBgComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Update and draw
     for (let i = 0; i < this.particles.length; i++) {
-        this.updateParticle(this.particles[i], i);
-        this.drawParticle(this.particles[i]);
+      this.updateParticle(this.particles[i], i);
+      this.drawParticle(this.particles[i]);
     }
   }
 
@@ -151,28 +157,28 @@ export class ParticleBgComponent implements OnInit, AfterViewInit, OnDestroy {
     // Very gentle floating movement
     p.baseX += Math.sin(Date.now() / 4000 + p.density) * 0.1;
     p.baseY += Math.cos(Date.now() / 4000 + p.density) * 0.1;
-    
+
     // Bubble-to-Bubble soft repulsion to prevent overlapping
     for (let j = 0; j < this.particles.length; j++) {
-        if (index === j) continue;
-        const other = this.particles[j];
-        const dx = p.x - other.x;
-        const dy = p.y - other.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        const minDistance = p.size + other.size + 40;
-        
-        if (distance < minDistance) {
-            const force = (minDistance - distance) / minDistance;
-            p.x += (dx / distance) * force * 2;
-            p.y += (dy / distance) * force * 2;
-        }
+      if (index === j) continue;
+      const other = this.particles[j];
+      const dx = p.x - other.x;
+      const dy = p.y - other.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      const minDistance = p.size + other.size + 40;
+
+      if (distance < minDistance) {
+        const force = (minDistance - distance) / minDistance;
+        p.x += (dx / distance) * force * 2;
+        p.y += (dy / distance) * force * 2;
+      }
     }
 
     if (this.mouse.x !== undefined && this.mouse.y !== undefined) {
       const dx = this.mouse.x - p.x;
       const dy = this.mouse.y - p.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
-      
+
       if (distance < 250) {
         const force = (250 - distance) / 250;
         const directionX = (dx / distance) * force * 15;
@@ -181,7 +187,7 @@ export class ParticleBgComponent implements OnInit, AfterViewInit, OnDestroy {
         p.y -= directionY * 0.04;
       }
     }
-    
+
     // Smoothly return to base position
     p.x += (p.baseX - p.x) * 0.01;
     p.y += (p.baseY - p.y) * 0.01;
@@ -189,7 +195,7 @@ export class ParticleBgComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private drawParticle(p: Particle): void {
     this.ctx.save();
-    
+
     // Draw bubble
     this.ctx.beginPath();
     this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
@@ -206,7 +212,7 @@ export class ParticleBgComponent implements OnInit, AfterViewInit, OnDestroy {
     // Darker version of bubble color for text but still very soft
     this.ctx.fillStyle = p.color.replace('0.15', '0.5').replace('0.12', '0.5').replace('0.2', '0.5');
     this.ctx.fillText(p.text, p.x, p.y);
-    
+
     this.ctx.restore();
   }
 

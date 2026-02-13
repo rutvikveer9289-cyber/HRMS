@@ -6,7 +6,7 @@
         </div>
         <div class="header-actions-group">
             <!-- Compact Header Symbols (Toggle Focused Details) -->
-            <div class="mini-dashboard-header">
+            <div class="mini-dashboard-header" *ngIf="canManagePayroll">
                 <div class="stat-pill total" (click)="toggleStat('total')" [class.active]="activeStat === 'total'"
                     title="Personnel Overview">
                     <i data-lucide="users"></i>

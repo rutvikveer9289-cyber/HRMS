@@ -127,7 +127,7 @@ export class LeaveManagementComponent implements OnInit {
 
   ngOnInit(): void {
     const role = this.authService.getUserRole();
-    this.isHr = role === 'HR' || role === 'SUPER_ADMIN';
+    this.isHr = role === 'HR' || role === 'SUPER_ADMIN' || role === 'CEO';
     this.isCeo = role === 'CEO' || role === 'SUPER_ADMIN';
 
     this.loadInitialData();

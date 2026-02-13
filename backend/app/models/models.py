@@ -27,6 +27,9 @@ from app.models.leave import (
     Holiday
 )
 
+# Re-export Communication models
+from app.models.communication import Announcement, Notification
+
 # Re-export Payroll & Salary models
 from app.models.salary_structure import SalaryStructure
 from app.models.deduction import DeductionType, EmployeeDeduction, CalculationType

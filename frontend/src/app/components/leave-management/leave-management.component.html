@@ -128,11 +128,9 @@
     <div class="form-card">
       <div class="form-group">
         <label>Leave Type</label>
-        <select [(ngModel)]="newRequest.leave_type_id" class="form-control">
-          <option *ngFor="let type of leaveTypes" [value]="type.id">
-            {{ type.name }} (Quota: {{ type.annual_quota }})
-          </option>
-        </select>
+        <div class="static-input" *ngIf="leaveTypes.length > 0">
+          {{ leaveTypes[0].name }} (Quota: {{ leaveTypes[0].annual_quota }})
+        </div>
       </div>
       <div class="form-row">
         <div class="form-group">

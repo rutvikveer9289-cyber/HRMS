@@ -13,31 +13,43 @@
     href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap"
     rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
-  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://unpkg.com/lucide@0.469.0"></script>
 </head>
 
 <body>
   <app-root></app-root>
   <script>
-    // Initialize icons with recursion protection
-    function safeCreateIcons() {
-      if (typeof lucide !== "undefined") {
+    // Simple but effective icon initialization
+    let isUpdating = false;
+    function triggerIcons() {
+      if (typeof lucide !== 'undefined' && !isUpdating) {
+        isUpdating = true;
         lucide.createIcons();
+        // Reset after a short delay to allow DOM to settle
+        setTimeout(() => { isUpdating = false; }, 100);
       }
     }
 
-    // Initial call
-    safeCreateIcons();
+    // Run periodically for safety during initial load
+    const iconInterval = setInterval(triggerIcons, 1000);
+    setTimeout(() => clearInterval(iconInterval), 10000);
 
-    // Watch for DOM changes to re-initialize icons in Angular SPA
+    // Also run on route changes
+    window.addEventListener('popstate', triggerIcons);
+
+    // Watch for major DOM changes - with a simple debounce to avoid feedback loops
+    let debounceTimer;
     const observer = new MutationObserver((mutations) => {
-      // Disconnect to avoid infinite loop when Lucide modifies the DOM
-      observer.disconnect();
-      safeCreateIcons();
-      // Re-observe
-      observer.observe(document.body, { childList: true, subtree: true });
-    });
+      // Only trigger if we see new elements that might need icons
+      const hasPotentialIcons = mutations.some(m =>
+        Array.from(m.addedNodes).some(n => n.nodeType === 1 && (n.hasAttribute('data-lucide') || n.querySelector('[data-lucide]')))
+      );
 
+      if (hasPotentialIcons) {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(triggerIcons, 100);
+      }
+    });
     observer.observe(document.body, { childList: true, subtree: true });
   </script>
 </body>

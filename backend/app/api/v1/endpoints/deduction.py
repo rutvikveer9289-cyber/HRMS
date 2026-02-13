@@ -30,7 +30,7 @@ async def create_deduction_type(
     current_user: Employee = Depends(get_current_user)
 ):
     """Create new deduction type"""
-    if current_user.role not in ["HR", "SUPER_ADMIN"]:
+    if current_user.role not in ["HR", "SUPER_ADMIN", "CEO"]:
         raise HTTPException(status_code=403, detail="Not authorized")
     
     deduction_repo = DeductionRepository(db)
@@ -43,7 +43,7 @@ async def assign_deduction_to_employee(
     current_user: Employee = Depends(get_current_user)
 ):
     """Assign deduction to employee"""
-    if current_user.role not in ["HR", "SUPER_ADMIN"]:
+    if current_user.role not in ["HR", "SUPER_ADMIN", "CEO"]:
         raise HTTPException(status_code=403, detail="Not authorized")
     
     deduction_repo = DeductionRepository(db)
@@ -69,7 +69,7 @@ async def deactivate_employee_deduction(
     current_user: Employee = Depends(get_current_user)
 ):
     """Deactivate employee deduction"""
-    if current_user.role not in ["HR", "SUPER_ADMIN"]:
+    if current_user.role not in ["HR", "SUPER_ADMIN", "CEO"]:
         raise HTTPException(status_code=403, detail="Not authorized")
     
     deduction_repo = DeductionRepository(db)

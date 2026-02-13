@@ -27,7 +27,8 @@ export class ProfileComponent implements OnInit {
   ) { }
 
   ngOnInit() {
-    this.isAdmin = this.authService.getUserRole() === 'SUPER_ADMIN';
+    const role = this.authService.getUserRole();
+    this.isAdmin = role === 'SUPER_ADMIN' || role === 'CEO';
     this.attendanceService.getProfile().subscribe({
       next: (res) => {
         this.profile = res;

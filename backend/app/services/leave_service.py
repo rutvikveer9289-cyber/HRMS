@@ -10,6 +10,7 @@ from typing import List, Dict
 from app.repositories.leave_repository import LeaveRepository
 from app.repositories.attendance_repository import AttendanceRepository
 from app.repositories.employee_repository import EmployeeRepository
+from app.services.communication_service import CommunicationService
 from app.models.models import Employee, UserRole
 
 class LeaveService:
@@ -20,6 +21,7 @@ class LeaveService:
         self.leave_repo = LeaveRepository(db)
         self.attendance_repo = AttendanceRepository(db)
         self.employee_repo = EmployeeRepository(db)
+        self.comm_service = CommunicationService(db)
     
     def create_leave_type(self, type_data: dict) -> Dict:
         """
@@ -124,16 +126,17 @@ class LeaveService:
                 detail="You already have a leave request overlapping these dates"
             )
         
+        # Check leave type and active status
+        leave_type = self.leave_repo.get_leave_type_by_id(leave_type_id)
+        if not leave_type or not leave_type.is_active:
+            raise HTTPException(status_code=400, detail="Selected leave type is not active or available")
+
         # Check balance
         year = start_date.year
         balance = self.leave_repo.get_balance(user.emp_id, leave_type_id, year)
         
         if not balance:
             # Initialize balance
-            leave_type = self.leave_repo.get_leave_type_by_id(leave_type_id)
-            if not leave_type:
-                raise HTTPException(status_code=404, detail="Leave type not found")
-            
             balance_data = {
                 "emp_id": user.emp_id,
                 "leave_type_id": leave_type.id,
@@ -154,7 +157,7 @@ class LeaveService:
             )
         
         # Create request
-        is_super_admin = user.role == UserRole.SUPER_ADMIN
+        is_auto_approve_role = user.role in [UserRole.SUPER_ADMIN, UserRole.CEO]
         request_data = {
             "emp_id": user.emp_id,
             "leave_type_id": leave_type_id,
@@ -162,19 +165,29 @@ class LeaveService:
             "end_date": end_date,
             "total_days": work_days,
             "reason": reason,
-            "status": "APPROVED" if is_super_admin else "PENDING"
+            "status": "APPROVED" if is_auto_approve_role else "PENDING"
         }
         
         new_request = self.leave_repo.create_request(request_data)
         
-        # Auto-approve for super admin
-        if is_super_admin:
+        # Auto-approve for authorized roles
+        if is_auto_approve_role:
             self.leave_repo.update_balance_used(balance, work_days)
             self.leave_repo.flush()
             self._sync_attendance_on_approval(new_request)
             self.leave_repo.commit()
-            return {"message": "Leave applied and auto-approved for Super Admin"}
+            role_name = "Super Admin" if user.role == UserRole.SUPER_ADMIN else "CEO"
+            return {"message": f"Leave applied and auto-approved for {role_name}"}
         
+        if not is_auto_approve_role:
+            # Notify HR about new leave application
+            self.comm_service.notify_role(
+                UserRole.HR, 
+                f"New leave application from {user.full_name} ({user.emp_id})",
+                "LEAVE",
+                "/leave-management"
+            )
+
         self.leave_repo.commit()
         return {"message": "Leave application submitted successfully"}
     
@@ -258,8 +271,26 @@ class LeaveService:
             "remarks": remarks
         }
         self.leave_repo.create_approval_log(log_data)
-        self.leave_repo.commit()
         
+        # Notify applicant
+        status_msg = "approved by HR and forwarded to CEO" if action == "APPROVE" else "rejected by HR"
+        self.comm_service.notify_user(
+            request.emp_id,
+            f"Your leave request for {request.start_date} has been {status_msg}.",
+            "LEAVE",
+            "/leave-management"
+        )
+        
+        if action == "APPROVE":
+            # Notify CEO
+            self.comm_service.notify_role(
+                UserRole.CEO,
+                f"New leave approval pending from {request.owner.full_name}",
+                "LEAVE",
+                "/leave-management"
+            )
+
+        self.leave_repo.commit()
         return {"message": message}
     
     def approve_by_ceo(self, request_id: int, ceo: Employee, action: str, remarks: str = None) -> Dict:
@@ -306,8 +337,26 @@ class LeaveService:
             "remarks": remarks
         }
         self.leave_repo.create_approval_log(log_data)
-        self.leave_repo.commit()
         
+        # Notify applicant
+        status_msg = "approved" if action == "APPROVE" else "rejected"
+        self.comm_service.notify_user(
+            request.emp_id,
+            f"Your leave request for {request.start_date} has been {status_msg} by CEO.",
+            "LEAVE",
+            "/leave-management"
+        )
+        
+        if action == "APPROVE":
+             # Notify HR
+            self.comm_service.notify_role(
+                UserRole.HR,
+                f"CEO has approved leave for {request.owner.full_name}",
+                "LEAVE",
+                "/leave-management"
+            )
+
+        self.leave_repo.commit()
         return {"message": message}
     
     def _validate_leave_dates(self, start_date: date, end_date: date) -> None:
@@ -327,8 +376,8 @@ class LeaveService:
         days = 0
         curr = start
         while curr <= end:
-            # Check if it's a weekday AND not a holiday
-            if curr.weekday() < 5 and curr not in holiday_dates:
+            # Check if it's a weekday (including Saturday) AND not a holiday
+            if curr.weekday() < 6 and curr not in holiday_dates:
                 days += 1
             curr += timedelta(days=1)
         return days
@@ -337,7 +386,7 @@ class LeaveService:
         """Mark attendance as 'On Leave' for approved dates"""
         curr = request.start_date
         while curr <= request.end_date:
-            if curr.weekday() < 5:
+            if curr.weekday() < 6:
                 existing = self.attendance_repo.get_by_emp_and_date(request.emp_id, curr)
                 
                 if existing:

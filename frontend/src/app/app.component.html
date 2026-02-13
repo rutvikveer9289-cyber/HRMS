@@ -25,25 +25,45 @@
     </div>
 
     <div class="header-right">
-      <!-- User Profile -->
-      <div class="header-action-item profile-trigger" (click)="toggleProfileMenu()" [class.active]="profileMenuOpen">
-        <div class="user-avatar-circle">
-          {{ getInitials(currentUser) }}
-        </div>
+      <!-- Action Center (Notifications) -->
+      <div class="header-action-item notification-trigger" (click)="toggleNotificationMenu()"
+        [class.active]="notificationMenuOpen">
+        <i data-lucide="bell"></i>
+        <span class="notification-badge" *ngIf="unreadCount > 0">{{ unreadCount }}</span>
 
-        <div class="profile-dropdown" *ngIf="profileMenuOpen">
-          <div class="dropdown-user-info">
-            <div class="u-name">{{ getUserDisplayName(currentUser) }}</div>
-            <div class="u-role">{{ currentUser?.role }}</div>
+        <div class="notification-dropdown" *ngIf="notificationMenuOpen" (click)="$event.stopPropagation()">
+          <div class="dropdown-header">
+            <h3>Notifications</h3>
+            <div class="header-actions">
+              <button class="btn-text" (click)="markAllAsRead()" *ngIf="unreadCount > 0">Mark read</button>
+              <button class="btn-text secondary" (click)="clearAllNotifications()"
+                *ngIf="notifications.length > 0">Clear Center</button>
+            </div>
           </div>
-          <hr />
-          <a routerLink="/profile" (click)="profileMenuOpen = false" class="dropdown-item">
-            <i data-lucide="user"></i> My Profile
-          </a>
-          <button class="btn-logout-dropdown" (click)="logout()">
-            <i data-lucide="log-out"></i>
-            <span>Logout</span>
-          </button>
+          <div class="notification-list">
+            <div class="notification-item" *ngFor="let n of notifications" [class.unread]="!n.is_read"
+              (click)="markAsRead(n)">
+              <div class="n-icon" [class]="n.type.toLowerCase()">
+                <i *ngIf="n.type === 'LEAVE'" data-lucide="calendar"></i>
+                <i *ngIf="n.type === 'ANNOUNCEMENT'" data-lucide="megaphone"></i>
+                <i *ngIf="n.type === 'SYSTEM'" data-lucide="info"></i>
+              </div>
+              <div class="n-content">
+                <p class="n-msg">{{ n.message }}</p>
+                <span class="n-time">{{ n.created_at | date:'shortTime' }}</span>
+              </div>
+              <div class="n-actions">
+                <div class="n-unread-dot" *ngIf="!n.is_read"></div>
+                <button class="n-delete-btn" (click)="deleteNotification($event, n)" title="Dismiss">
+                  <i data-lucide="x"></i>
+                </button>
+              </div>
+            </div>
+            <div class="empty-notifications" *ngIf="notifications.length === 0">
+              <i data-lucide="bell-off"></i>
+              <p>No notifications yet</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -69,6 +89,12 @@
 
       <!-- Navigation Items -->
       <nav class="sidebar-menu">
+        <a routerLink="/profile" routerLinkActive="active" class="sidebar-item profile-item"
+          (click)="sidebarOpen = false" title="Edit Profile">
+          <i data-lucide="user"></i>
+          <span>Edit Profile</span>
+        </a>
+
         <a routerLink="/analytics" routerLinkActive="active" class="sidebar-item" (click)="sidebarOpen = false"
           title="Analytics">
           <i data-lucide="bar-chart-2"></i>
@@ -104,6 +130,11 @@
           <i data-lucide="clipboard-list"></i>
           <span>Records</span>
         </a>
+
+        <button class="sidebar-item logout-item" (click)="logout()" title="Logout">
+          <i data-lucide="log-out"></i>
+          <span>Logout</span>
+        </button>
       </nav>
     </aside>
 

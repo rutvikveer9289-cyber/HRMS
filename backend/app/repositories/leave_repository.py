@@ -42,10 +42,11 @@ class LeaveRepository:
         ).first()
     
     def get_balances_by_emp(self, emp_id: str, year: int) -> List[LeaveBalance]:
-        """Get all leave balances for employee in a year"""
-        return self.db.query(LeaveBalance).filter(
+        """Get all leave balances for employee in a year (filtered by active leave types)"""
+        return self.db.query(LeaveBalance).join(LeaveType).filter(
             LeaveBalance.emp_id == emp_id,
-            LeaveBalance.year == year
+            LeaveBalance.year == year,
+            LeaveType.is_active == True
         ).all()
     
     def create_balance(self, balance_data: dict) -> LeaveBalance:

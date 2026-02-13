@@ -7,6 +7,8 @@ import { NotificationService, Alert } from './services/notification.service';
 import { AttendanceService } from './services/attendance.service';
 import { AuthService } from './services/auth.service';
 
+import { CommunicationService, AppNotification } from './services/communication.service';
+
 @Component({
   selector: 'app-root',
   standalone: true,
@@ -24,12 +26,16 @@ export class AppComponent implements OnInit {
   profileMenuOpen = false;
   mainMenuOpen = false;
   sidebarOpen = false;
+  notificationMenuOpen = false;
+  notifications: AppNotification[] = [];
+  unreadCount = 0;
   currentUser: any = null;
 
   constructor(
     public notificationService: NotificationService,
     public attendanceService: AttendanceService,
     public authService: AuthService,
+    public commService: CommunicationService,
     public router: Router
   ) { }
 
@@ -50,6 +56,95 @@ export class AppComponent implements OnInit {
     this.attendanceService.hasData$.subscribe((available: boolean) => {
       this.hasDashboardData = available;
     });
+
+    // Load notifications periodically
+    if (this.authService.isLoggedIn()) {
+      this.loadNotifications();
+      setInterval(() => {
+        // Only fetch in background if menu is closed to prevent flickering/UI reset
+        if (this.authService.isLoggedIn() && !this.notificationMenuOpen) {
+          this.loadNotifications();
+        }
+      }, 30000); // 30 seconds
+    }
+  }
+
+  loadNotifications() {
+    this.commService.getNotifications().subscribe({
+      next: (data) => {
+        this.notifications = data;
+        this.unreadCount = data.filter(n => !n.is_read).length;
+      }
+    });
+  }
+
+  toggleNotificationMenu() {
+    this.notificationMenuOpen = !this.notificationMenuOpen;
+    if (this.notificationMenuOpen) {
+      this.profileMenuOpen = false;
+      this.sidebarOpen = false;
+      // Mark all as read when opening to clear the badge
+      if (this.unreadCount > 0) {
+        this.markAllAsRead();
+      }
+    }
+  }
+
+  markAsRead(n: AppNotification) {
+    if (!n.is_read) {
+      // Optimistic
+      n.is_read = true;
+      this.unreadCount = Math.max(0, this.unreadCount - 1);
+
+      this.commService.markRead(n.id).subscribe({
+        error: () => this.loadNotifications() // Revert on error
+      });
+    }
+    if (n.link) {
+      this.router.navigate([n.link]);
+      this.notificationMenuOpen = false;
+    }
+  }
+
+  markAllAsRead() {
+    // Only clear the badge count visually immediately
+    this.unreadCount = 0;
+    this.notifications.forEach(n => n.is_read = true);
+
+    // Server Sync
+    this.commService.markAllRead().subscribe({
+      next: () => {
+        // Note: We don't call loadNotifications() immediately here 
+        // because the backend now only returns unread ones.
+        // If we did, the list would vanish while the user is still looking at it.
+        // Instead, the background interval or next manual open will handle the refresh.
+      }
+    });
+  }
+
+  deleteNotification(event: Event, n: AppNotification) {
+    event.stopPropagation();
+    // Optimistic
+    this.notifications = this.notifications.filter(item => item.id !== n.id);
+    if (!n.is_read) {
+      this.unreadCount = Math.max(0, this.unreadCount - 1);
+    }
+
+    this.commService.deleteNotification(n.id).subscribe({
+      error: () => this.loadNotifications()
+    });
+  }
+
+  clearAllNotifications() {
+    if (confirm('Are you sure you want to clear all notifications?')) {
+      // Optimistic
+      this.notifications = [];
+      this.unreadCount = 0;
+
+      this.commService.clearNotifications().subscribe({
+        error: () => this.loadNotifications()
+      });
+    }
   }
 
   getInitials(user: any): string {
