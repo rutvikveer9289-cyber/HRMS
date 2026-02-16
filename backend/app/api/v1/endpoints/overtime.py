@@ -100,3 +100,18 @@ async def get_overtime_summary(
     
     overtime_service = OvertimeService(db)
     return overtime_service.get_overtime_summary(emp_id, month, year)
+
+@router.get("/analytics/top-earners")
+async def get_top_overtime_earners(
+    month: int,
+    year: int,
+    limit: int = 5,
+    db: Session = Depends(get_db),
+    current_user: Employee = Depends(get_current_user)
+):
+    """Get top overtime earners for analytics"""
+    if current_user.role not in ["HR", "SUPER_ADMIN", "CEO"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    overtime_service = OvertimeService(db)
+    return overtime_service.get_top_overtime_earners(month, year, limit)

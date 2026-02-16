@@ -51,6 +51,32 @@
             </div>
           </div>
 
+          <!-- Document Repository -->
+          <div class="doc-section">
+            <div class="section-title-alt">
+              <i class="lucide-file-text"></i>
+              <span>Digital Repository (Mandatory Documents)</span>
+            </div>
+            <div class="doc-grid">
+              <div class="doc-item" *ngFor="let doc of documents" [class.uploaded]="doc.uploaded">
+                <div class="doc-info">
+                  <span class="doc-name">{{ doc.name }}</span>
+                  <span class="doc-status" *ngIf="doc.uploaded">✓ Selection Ready</span>
+                  <span class="doc-status pending" *ngIf="!doc.uploaded">Required</span>
+                </div>
+                <div class="doc-actions">
+                  <button type="button" class="btn-doc upload" *ngIf="!doc.uploaded" (click)="docInput.click()">
+                    Selection
+                  </button>
+                  <button type="button" class="btn-doc remove" *ngIf="doc.uploaded" (click)="removeFile(doc)">
+                    Remove
+                  </button>
+                  <input type="file" #docInput (change)="onFileSelected($event, doc)" hidden />
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div class="form-actions">
             <button type="button" class="btn-cancel" (click)="resetForm()">
               Reset Fields

@@ -212,6 +212,10 @@
                   (click)="cancelRequest(req.id); $event.stopPropagation()">
                   <i data-lucide="trash-2"></i> Cancel
                 </button>
+                <button *ngIf="req.status !== 'PENDING'" class="btn-view-details"
+                  (click)="toggleRow(req.id); $event.stopPropagation()">
+                  <i data-lucide="eye"></i> View Details
+                </button>
               </td>
             </tr>
             <tr *ngIf="expandedRequestId === req.id" class="details-row">

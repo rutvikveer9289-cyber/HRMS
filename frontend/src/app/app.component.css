@@ -4,6 +4,9 @@
     display: flex;
     flex-direction: column;
     background: #f8fafc;
+    position: relative;
+    z-index: 1;
+    /* Lowest z-index to prevent overlaying header/sidebar */
 }
 
 /* Top Header */
@@ -41,6 +44,9 @@
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     color: #64748b;
+    z-index: 1002;
+    /* Higher than header */
+    position: relative;
 }
 
 .menu-toggle-btn:hover {

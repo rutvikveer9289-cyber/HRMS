@@ -120,7 +120,17 @@ class OvertimeService:
             "total_overtime_hours": float(total_hours),
             "total_overtime_amount": float(total_amount)
         }
-    
+
+    def get_top_overtime_earners(self, month: int, year: int, limit: int = 5) -> list:
+        """Get top overtime earners for a month"""
+        start_date = date(year, month, 1)
+        if month == 12:
+            end_date = date(year + 1, 1, 1) - timedelta(days=1)
+        else:
+            end_date = date(year, month + 1, 1) - timedelta(days=1)
+            
+        return self.overtime_repo.get_top_earners(start_date, end_date, limit)
+
     def _parse_duration_to_hours(self, duration_str: str) -> Decimal:
         """
         Parse duration string to hours

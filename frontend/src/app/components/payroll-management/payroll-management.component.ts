@@ -36,6 +36,7 @@ export class PayrollManagementComponent implements OnInit {
   loading: boolean = false;
   isAllHistory: boolean = false;
   processSingleEmpId: string = '';
+  ledgerSearch: string = '';
   paymentMethods: string[] = ['Bank Transfer', 'Cash', 'Check', 'UPI'];
 
   // Deduction data
@@ -126,12 +127,34 @@ export class PayrollManagementComponent implements OnInit {
 
   // Filter Methods
   getFilteredRecords(): any[] {
-    if (this.paymentFilter === 'paid') {
-      return this.payrollRecords.filter(r => r.status === 'PAID');
-    } else if (this.paymentFilter === 'pending') {
-      return this.payrollRecords.filter(r => r.status !== 'PAID');
+    let records = this.payrollRecords;
+
+    if (this.isAllHistory) {
+      // In Ledger view, only show PAID records as requested
+      records = records.filter(r => r.status === 'PAID');
+
+      if (this.ledgerSearch) {
+        const search = this.ledgerSearch.toLowerCase();
+        records = records.filter(r => {
+          const empName = (r.owner?.full_name || '').toLowerCase();
+          const empId = (r.emp_id || '').toLowerCase();
+          const month = this.getMonthName(r.month || 0).toLowerCase();
+          const year = (r.year || '').toString();
+          return empName.includes(search) ||
+            empId.includes(search) ||
+            month.includes(search) ||
+            year.includes(search);
+        });
+      }
+      return records;
     }
-    return this.payrollRecords;
+
+    if (this.paymentFilter === 'paid') {
+      return records.filter(r => r.status === 'PAID');
+    } else if (this.paymentFilter === 'pending') {
+      return records.filter(r => r.status !== 'PAID');
+    }
+    return records;
   }
 
   // Bulk Selection Methods

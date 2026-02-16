@@ -39,4 +39,10 @@ export class OvertimeService {
     getOvertimeSummary(empId: string, month: number, year: number): Observable<any> {
         return this.http.get(`${this.apiUrl}/summary/${empId}/${month}/${year}`);
     }
+
+    getTopEarners(month: number, year: number, limit: number = 5): Observable<any[]> {
+        return this.http.get<any[]>(`${this.apiUrl}/analytics/top-earners`, {
+            params: { month: month.toString(), year: year.toString(), limit: limit.toString() }
+        });
+    }
 }

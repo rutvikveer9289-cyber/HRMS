@@ -457,6 +457,31 @@
   color: white;
 }
 
+.btn-view-details {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-view-details:hover {
+  background: #e2e8f0;
+  color: #1e293b;
+}
+
+.btn-view-details i {
+  width: 14px;
+  height: 14px;
+}
+
 .btn-cancel i {
   width: 14px;
   height: 14px;

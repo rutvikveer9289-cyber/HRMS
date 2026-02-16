@@ -81,11 +81,18 @@
         <div class="board-header-minimal">
             <div class="title-group">
                 <h2>{{ isAllHistory ? 'Historical Archive' : 'Current Payroll' }}</h2>
-                <div class="filter-pills-mini">
+                <div class="filter-pills-mini" *ngIf="!isAllHistory">
                     <button (click)="paymentFilter = 'all'" [class.active]="paymentFilter === 'all'">All</button>
                     <button (click)="paymentFilter = 'paid'" [class.active]="paymentFilter === 'paid'">Paid</button>
                     <button (click)="paymentFilter = 'pending'"
                         [class.active]="paymentFilter === 'pending'">Pending</button>
+                </div>
+
+                <div class="search-box-ledger" *ngIf="isAllHistory">
+                    <i data-lucide="search" style="width: 14px; color: #94a3b8;"></i>
+                    <input type="text" [(ngModel)]="ledgerSearch" placeholder="Search employee, month or year..." />
+                    <i data-lucide="x" *ngIf="ledgerSearch" (click)="ledgerSearch = ''"
+                        style="width: 14px; color: #94a3b8; cursor: pointer;"></i>
                 </div>
             </div>
         </div>
@@ -139,7 +146,7 @@
                                 <td *ngIf="isAllHistory">
                                     <div class="session-badge">
                                         <i data-lucide="calendar" style="width: 12px; margin-right: 4px;"></i>
-                                        <span>{{ record.month }} / {{ record.year }}</span>
+                                        <span>{{ getMonthName(record.month) }} {{ record.year }}</span>
                                     </div>
                                 </td>
 

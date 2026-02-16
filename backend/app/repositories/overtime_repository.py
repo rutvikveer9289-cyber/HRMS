@@ -134,3 +134,31 @@ class OvertimeRepository:
         ).scalar()
         
         return result if result else Decimal('0.00')
+
+    def get_top_earners(self, start_date: date, end_date: date, limit: int = 5) -> List[dict]:
+        """Get top overtime earners for a date range"""
+        from sqlalchemy import func
+        from app.models.employee import Employee
+        
+        results = self.db.query(
+            OvertimeRecord.emp_id,
+            Employee.full_name,
+            func.sum(OvertimeRecord.overtime_hours).label('total_hours'),
+            func.sum(OvertimeRecord.overtime_amount).label('total_amount')
+        ).join(Employee, OvertimeRecord.emp_id == Employee.emp_id)\
+        .filter(
+            OvertimeRecord.date >= start_date,
+            OvertimeRecord.date <= end_date,
+            OvertimeRecord.status == "APPROVED"
+        ).group_by(OvertimeRecord.emp_id, Employee.full_name)\
+        .order_by(func.sum(OvertimeRecord.overtime_amount).desc())\
+        .limit(limit).all()
+        
+        return [
+            {
+                "emp_id": r.emp_id,
+                "full_name": r.full_name,
+                "total_hours": float(r.total_hours),
+                "total_amount": float(r.total_amount)
+            } for r in results
+        ]

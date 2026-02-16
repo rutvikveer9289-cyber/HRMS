@@ -11,6 +11,7 @@ import { NotificationService } from '../../services/notification.service';
 import { LeaveService } from '../../services/leave.service';
 import { StatsGridComponent } from './stats-grid.component';
 import { CommunicationService, Announcement } from '../../services/communication.service';
+import { OvertimeService } from '../../services/overtime.service';
 
 Chart.register(...registerables);
 
@@ -131,13 +132,22 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     private dailyChartStats: any[] = [];
     holidays: any[] = [];
+    topEarners: any[] = [];
+    public otChartData: ChartConfiguration<'bar'>['data'] = { labels: [], datasets: [] };
+    public otChartOptions: ChartOptions<'bar'> = {
+        responsive: true,
+        maintainAspectRatio: false,
+        indexAxis: 'y',
+        plugins: { legend: { display: false } }
+    };
 
     constructor(
         private attendanceService: AttendanceService,
         public authService: AuthService,
         private notificationService: NotificationService,
         private leaveService: LeaveService,
-        private commService: CommunicationService
+        private commService: CommunicationService,
+        private overtimeService: OvertimeService
     ) { }
 
     ngOnInit() {
@@ -156,6 +166,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.leaveService.getHolidays().subscribe(data => {
             this.holidays = data;
             if (this.attendanceService.typeAData.length > 0) this.syncData();
+        });
+
+        // Fetch Top Earners
+        const now = new Date();
+        this.overtimeService.getTopEarners(now.getMonth() + 1, now.getFullYear()).subscribe(data => {
+            this.topEarners = data;
+            this.processOvertimeChart();
         });
 
         this.loading = true;
@@ -539,5 +556,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
                 this.loadAnnouncements();
             });
         }
+    }
+
+    processOvertimeChart() {
+        if (!this.topEarners || this.topEarners.length === 0) return;
+
+        this.otChartData = {
+            labels: this.topEarners.map(e => e.full_name),
+            datasets: [{
+                data: this.topEarners.map(e => e.total_amount),
+                label: 'Overtime Pay',
+                backgroundColor: '#fbbf24',
+                borderRadius: 4
+            }]
+        };
     }
 }

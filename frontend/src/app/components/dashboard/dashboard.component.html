@@ -107,6 +107,41 @@
       </div>
     </div>
 
+    <!-- Analytics Insights Row -->
+    <div class="insights-row" *ngIf="!loading && hasData && canViewAll">
+      <div class="insight-card">
+        <div class="chart-header">
+          <h3>Top Overtime Earners</h3>
+          <p>Highest payout for current month</p>
+        </div>
+        <div class="chart-box-ot">
+          <canvas baseChart *ngIf="topEarners.length > 0" [data]="otChartData" [options]="otChartOptions"
+            type="bar"></canvas>
+          <div class="empty-mini" *ngIf="topEarners.length === 0">No overtime data for this month</div>
+        </div>
+      </div>
+
+      <div class="insight-card holidays">
+        <div class="chart-header">
+          <h3>Upcoming Holidays</h3>
+          <p>Corporate days off</p>
+        </div>
+        <div class="holiday-list-mini">
+          <div class="h-item" *ngFor="let h of holidays | slice:0:3">
+            <div class="h-date">
+              <span class="d">{{ h.date | date:'dd' }}</span>
+              <span class="m">{{ h.date | date:'MMM' }}</span>
+            </div>
+            <div class="h-info">
+              <span class="name">{{ h.name }}</span>
+              <span class="day">{{ h.day }}</span>
+            </div>
+          </div>
+          <div class="empty-mini" *ngIf="holidays.length === 0">No holidays scheduled</div>
+        </div>
+      </div>
+    </div>
+
     <!-- Drill-down Modal -->
     <div class="modal-overlay" *ngIf="showDrillDown">
       <div class="modal-card larger">

@@ -25,6 +25,13 @@ export class OnboardingComponent implements OnInit {
     emp_id: ''
   };
 
+  documents = [
+    { name: 'Identity Proof (Aadhar/Voter ID)', key: 'id_proof', file: null, uploaded: false },
+    { name: 'Address Proof', key: 'address_proof', file: null, uploaded: false },
+    { name: 'Educational Certificates', key: 'education', file: null, uploaded: false },
+    { name: 'Previous Employment Records', key: 'experience', file: null, uploaded: false }
+  ];
+
   loading = false;
   uploadingMaster = false;
   canSync = false;
@@ -140,6 +147,20 @@ export class OnboardingComponent implements OnInit {
     return true;
   }
 
+  onFileSelected(event: any, doc: any) {
+    const file = event.target.files[0];
+    if (file) {
+      doc.file = file;
+      doc.uploaded = true;
+      this.notificationService.showAlert(`${doc.name} selected`, 'info');
+    }
+  }
+
+  removeFile(doc: any) {
+    doc.file = null;
+    doc.uploaded = false;
+  }
+
   resetForm() {
     this.employee = {
       first_name: '',
@@ -150,5 +171,9 @@ export class OnboardingComponent implements OnInit {
       designation: '',
       emp_id: ''
     };
+    this.documents.forEach(d => {
+      d.file = null;
+      d.uploaded = false;
+    });
   }
 }
