@@ -37,7 +37,7 @@ export class UploadComponent {
         event.preventDefault();
         event.stopPropagation();
         this.isDragging = false;
-        
+
         const files = event.dataTransfer?.files;
         if (files && files.length > 0) {
             this.handleUpload(Array.from(files));
@@ -59,7 +59,10 @@ export class UploadComponent {
             next: (res) => {
                 this.uploading = false;
                 this.results = res.results || [];
-                this.attendanceService.fetchAttendance();
+                // Delay fetch to give background task a moment
+                setTimeout(() => {
+                    this.attendanceService.fetchAttendance();
+                }, 1000);
                 this.notificationService.showAlert(res.message || "Files processed successfully", 'success');
             },
             error: (err) => {

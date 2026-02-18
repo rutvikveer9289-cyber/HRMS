@@ -55,7 +55,8 @@ export class LeaveManagementComponent implements OnInit {
 
   openHolidayModal(holiday?: any) {
     if (holiday) {
-      this.holidayForm = { name: holiday.name, date: holiday.date };
+      const dateStr = holiday.date ? String(holiday.date).split('T')[0] : '';
+      this.holidayForm = { name: holiday.name, date: dateStr };
       this.editingHolidayId = holiday.id;
     } else {
       this.editingHolidayId = null;
@@ -68,7 +69,7 @@ export class LeaveManagementComponent implements OnInit {
   }
 
   saveHoliday() {
-    if (this.editingHolidayId) {
+    if (this.editingHolidayId !== null) {
       // Update existing
       this.leaveService.updateHoliday(this.editingHolidayId, this.holidayForm).subscribe({
         next: () => {
@@ -77,7 +78,10 @@ export class LeaveManagementComponent implements OnInit {
           this.editingHolidayId = null;
           this.holidayForm = { name: '', date: '' };
         },
-        error: (err) => this.notificationService.showAlert(err.error?.detail || 'Update failed', 'error')
+        error: (err) => {
+          const msg = this.getErrorMessage(err);
+          this.notificationService.showAlert(msg, 'error');
+        }
       });
     } else {
       // Create new
@@ -91,9 +95,25 @@ export class LeaveManagementComponent implements OnInit {
           this.loadHolidays();
           this.holidayForm = { name: '', date: '' };
         },
-        error: (err) => this.notificationService.showAlert(err.error?.detail || 'Add failed', 'error')
+        error: (err) => {
+          const msg = this.getErrorMessage(err);
+          this.notificationService.showAlert(msg, 'error');
+        }
       });
     }
+  }
+
+  getErrorMessage(err: any): string {
+    if (err.error && err.error.detail) {
+      if (typeof err.error.detail === 'string') {
+        return err.error.detail;
+      }
+      if (Array.isArray(err.error.detail)) {
+        return err.error.detail.map((e: any) => e.msg || JSON.stringify(e)).join(', ');
+      }
+      return JSON.stringify(err.error.detail);
+    }
+    return err.message || 'Action failed';
   }
 
   deleteHoliday(id: number) {
@@ -103,7 +123,10 @@ export class LeaveManagementComponent implements OnInit {
         this.notificationService.showAlert('Holiday deleted', 'success');
         this.loadHolidays();
       },
-      error: (err) => this.notificationService.showAlert(err.error?.detail || 'Delete failed', 'error')
+      error: (err) => {
+        const msg = this.getErrorMessage(err);
+        this.notificationService.showAlert(msg, 'error');
+      }
     });
   }
 

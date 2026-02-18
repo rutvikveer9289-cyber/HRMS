@@ -9,18 +9,8 @@
       </button>
 
       <!-- Logo -->
-      <div class="brand-wrapper" routerLink="/dashboard" style="cursor: pointer">
-        <svg width="200" height="55" viewBox="0 0 200 55" class="logo-svg">
-          <defs>
-            <pattern id="stripe-pattern" x="0" y="0" width="100%" height="6" patternUnits="userSpaceOnUse">
-              <rect x="0" y="0" width="100%" height="3.5" fill="#1976d2" />
-            </pattern>
-          </defs>
-          <text x="0" y="32" class="logo-text" fill="url(#stripe-pattern)" font-family="'Arial Black', sans-serif"
-            font-size="40" font-weight="900" letter-spacing="-1.5">RBIS</text>
-          <text x="2" y="50" class="logo-tagline-svg" font-family="'Dancing Script', cursive" font-size="14"
-            fill="#334155" letter-spacing="0.5">Your Vision, Our Innovation</text>
-        </svg>
+      <div class="brand-wrapper" routerLink="/dashboard" (click)="resetMenus()" style="cursor: pointer">
+        <img src="https://huntscaler.blob.core.windows.net/rbisimages/rbis logo .svg" alt="RBIS Logo" class="logo-img">
       </div>
     </div>
 
@@ -66,6 +56,12 @@
           </div>
         </div>
       </div>
+
+      <!-- User Profile Display -->
+      <div class="header-profile-section" routerLink="/profile" (click)="resetMenus()"
+        *ngIf="router.url !== '/login' && router.url !== '/signup'" style="cursor: pointer">
+        <span class="u-name-header">{{ getUserDisplayName(currentUser) }}</span>
+      </div>
     </div>
   </header>
 
@@ -90,9 +86,9 @@
       <!-- Navigation Items -->
       <nav class="sidebar-menu">
         <a routerLink="/profile" routerLinkActive="active" class="sidebar-item profile-item"
-          (click)="sidebarOpen = false" title="Edit Profile">
+          (click)="sidebarOpen = false" title="My Profile">
           <i data-lucide="user"></i>
-          <span>Edit Profile</span>
+          <span>My Profile</span>
         </a>
 
         <a routerLink="/analytics" routerLinkActive="active" class="sidebar-item" (click)="sidebarOpen = false"

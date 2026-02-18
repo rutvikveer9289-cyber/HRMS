@@ -6,6 +6,7 @@ import { Subscription } from 'rxjs';
 import { AuthService } from '../../services/auth.service';
 import { NotificationService } from '../../services/notification.service';
 import { LeaveService } from '../../services/leave.service';
+import { AdminService } from '../../services/admin.service';
 
 @Component({
   selector: 'app-analytics',
@@ -32,12 +33,14 @@ export class AnalyticsComponent implements OnInit, OnDestroy {
   private subs = new Subscription();
 
   holidays: any[] = [];
+  allEmployees: any[] = [];
 
   constructor(
     private attendanceService: AttendanceService,
     private authService: AuthService,
     private notificationService: NotificationService,
-    private leaveService: LeaveService
+    private leaveService: LeaveService,
+    private adminService: AdminService
   ) { }
 
   canViewAll = false;
@@ -59,7 +62,10 @@ export class AnalyticsComponent implements OnInit, OnDestroy {
       if (this.attendanceService.typeAData.length > 0) this.syncData();
     });
 
-    this.attendanceService.fetchAttendance();
+    this.adminService.getEmployees().subscribe(emps => {
+      this.allEmployees = emps;
+      this.attendanceService.fetchAttendance();
+    });
     this.subs.add(this.attendanceService.typeAData$.subscribe(() => this.syncData()));
     this.subs.add(this.attendanceService.typeBData$.subscribe(() => this.syncData()));
   }
@@ -85,6 +91,29 @@ export class AnalyticsComponent implements OnInit, OnDestroy {
         if (rec.Attendance === 'Present') existing.Attendance = 'Present';
       }
     });
+
+    // Fill gaps for missing employees on existing dates
+    if (this.allEmployees.length > 0) {
+      const datesInRecords = [...new Set(Array.from(mergeMap.values()).map((r: any) => String(r.Date).split('T')[0]))].sort();
+      datesInRecords.forEach(dateStr => {
+        this.allEmployees.forEach(emp => {
+          const key = `${emp.EmpID}_${dateStr}`;
+          if (!mergeMap.has(key)) {
+            mergeMap.set(key, {
+              Date: dateStr,
+              EmpID: emp.EmpID,
+              Employee_Name: emp.Name,
+              Attendance: 'Absent',
+              First_In: '--:--',
+              Last_Out: '--:--',
+              In_Duration: '00:00',
+              Total_Duration: '00:00'
+            });
+          }
+        });
+      });
+    }
+
     this.rawData = Array.from(mergeMap.values()).filter((rec: any) => {
       const dateStr = String(rec.Date).split('T')[0];
       const date = new Date(rec.Date);
@@ -130,7 +159,17 @@ export class AnalyticsComponent implements OnInit, OnDestroy {
     let filtered = this.rawData;
 
     if (hasTerm) {
+      // Normalize term if it's a number or simple RBIS format
+      let normalizedTerm = term;
+      if (term.startsWith('rbis')) {
+        const num = term.replace('rbis', '').replace(/^0+/, '');
+        if (num) normalizedTerm = 'rbis' + num.padStart(4, '0');
+      } else if (!isNaN(Number(term))) {
+        normalizedTerm = 'rbis' + term.padStart(4, '0');
+      }
+
       filtered = filtered.filter(r =>
+        (r.EmpID && r.EmpID.toLowerCase() === normalizedTerm) ||
         (r.EmpID && r.EmpID.toLowerCase() === term) ||
         (r.Employee_Name && r.Employee_Name.toLowerCase().includes(term))
       );

@@ -25,6 +25,8 @@ class AttendanceService:
         self.db = db
         self.attendance_repo = AttendanceRepository(db)
         self.file_repo = FileRepository(db)
+        from app.repositories.employee_repository import EmployeeRepository
+        self.employee_repo = EmployeeRepository(db)
     
     def process_uploaded_files(
         self,
@@ -46,11 +48,14 @@ class AttendanceService:
         for file in files:
             logger.info(f"Received file for processing: {file.filename}")
             try:
+                # We use a nested transaction/savepoint if possible, or just commit sequentially
                 result = self._process_single_file(file, admin)
                 results.append(result)
             except Exception as e:
                 logger.error(f"Error processing file {file.filename}: {e}", exc_info=True)
-                self.attendance_repo.rollback()
+                # Ensure we at least roll back any partial attendance records, 
+                # but we want to keep the file log if it was committed.
+                self.db.rollback() 
                 results.append({
                     "filename": file.filename,
                     "status": "error",
@@ -66,71 +71,43 @@ class AttendanceService:
     ) -> Dict:
         """
         Process a single attendance file
-        
-        Args:
-            file: Uploaded file
-            admin: Admin user
-            
-        Returns:
-            Processing result dictionary
         """
         # Read file content
-        content = file.file.read() # Read directly from SpooledTemporaryFile synchronously
+        content = file.file.read()
         
         # Calculate hash for duplicate detection
         file_hash = calculate_file_hash(content)
         existing_file = self.file_repo.get_by_hash(file_hash)
         
-        if existing_file:
-            logger.info(f"[SYSTEM] File {file.filename} already uploaded (Hash collision). Skipping Azure upload.")
-        
-        # Try to use pre-cleaned data if available (passed from API layer)
+        # Try to use pre-cleaned data if available
         if hasattr(file, 'cleaned_data') and file.cleaned_data:
             cleaned_data = file.cleaned_data
             detected_type = getattr(file, 'detected_type', "In/Out Duration Report")
-            logger.info(f"Using pre-cleaned data for {file.filename}")
         else:
-            # Clean and detect file format (fallback)
             cleaned_data, detected_type = detect_and_clean_memory(content)
-            logger.info(f"[DEBUG] Processing file: {file.filename} | Detected Type: {detected_type}")
         
         if not cleaned_data:
-            logger.error(f"[ERROR] Rejecting {file.filename}: {detected_type}")
             return {
                 "filename": file.filename,
                 "status": "error",
                 "reason": detected_type
             }
-        
-        # 1. PRE-VALIDATION: Check all records before doing ANY external operations
+
+        # 1. PRE-VALIDATION: Check pattern
         import re
-        validation_errors = []
         for i, rec in enumerate(cleaned_data):
             raw_id = rec.get('EmpID', '')
             emp_id = normalize_emp_id(raw_id)
-            
-            # STRICT PATTERN MATCH: Must be RBIS followed by exactly 4 digits
             if not re.match(r'^RBIS\d{4}$', emp_id):
-                validation_errors.append(f"Record {i+1}: Invalid ID format '{raw_id}' (Must follow RBISxxxx pattern)")
-            
-            if not rec.get('Date'):
-                validation_errors.append(f"Record {i+1}: Missing attendance date")
-        
-        if validation_errors:
-            error_msg = "; ".join(validation_errors[:3]) + (f" (+{len(validation_errors)-3} more)" if len(validation_errors) > 3 else "")
-            logger.error(f"[ERROR] Validation failed for {file.filename}: {error_msg}")
-            return {
-                "filename": file.filename,
-                "status": "error",
-                "reason": f"Data Validation Error: {error_msg}"
-            }
+                return {
+                    "filename": file.filename,
+                    "status": "error",
+                    "reason": f"Data Validation Error: Row {i+1} has invalid ID format '{raw_id}'"
+                }
 
-        # 2. FILE LOGGING (DB Entry for the file)
-        # We check if hash exists to avoid duplicate WORK, not just duplicate FILES.
+        # 2. FILE LOGGING (Commit this first)
         if not existing_file:
             safe_filename = generate_safe_filename(file.filename)
-            
-            # Create file upload log entry first (but don't commit yet)
             log_data = {
                 "filename": file.filename,
                 "uploaded_by": admin.email,
@@ -138,33 +115,25 @@ class AttendanceService:
                 "file_hash": file_hash,
                 "file_path": safe_filename
             }
-            upload_log = self.file_repo.create(log_data)
-            logger.info(f"Created pending file log ID: {upload_log.id}")
+            self.file_repo.create(log_data)
+            self.db.commit() # Commit file log separately
             
-            # 3. AZURE UPLOAD (Only if it's a new file)
+            # AZURE UPLOAD
             try:
                 upload_bytes_to_azure_sync(content, safe_filename, getattr(file, 'content_type', "application/octet-stream"))
-                logger.info(f"Successfully uploaded {safe_filename} to Azure")
             except Exception as e:
-                # IMPORTANT: In local/dev environments without valid Azure creds, 
-                # we SHOULD NOT fail the entire transaction.
-                logger.warning(f"Azure backup failed: {e}. Proceeding with DB records only.")
-                # We do NOT rollback here, so database processing continues.
+                logger.warning(f"Azure backup failed: {e}")
         else:
             logger.info(f"Using existing upload record for {file.filename}")
-            safe_filename = existing_file.file_path
         
-        # 4. DATABASE PROCESSING (Attendance Records)
+        # 3. DATABASE PROCESSING (Attendance Records)
         try:
             saved_count, updated_count = self._process_attendance_records(
                 cleaned_data,
                 file.filename
             )
             
-            # Commit everything (File Log + Attendance Records)
-            self.attendance_repo.commit()
-            logger.info(f"Completed processing {file.filename}: Saved {saved_count}, Updated {updated_count}")
-            
+            self.db.commit()
             return {
                 "filename": file.filename,
                 "status": "success",
@@ -173,7 +142,7 @@ class AttendanceService:
             }
         except Exception as e:
             logger.error(f"Database error processing records for {file.filename}: {e}")
-            self.attendance_repo.rollback()
+            self.db.rollback()
             return {
                 "filename": file.filename,
                 "status": "error",
@@ -185,41 +154,25 @@ class AttendanceService:
         cleaned_data: List[Dict],
         source_filename: str
     ) -> tuple:
-        """
-        Process attendance records from cleaned data
-        
-        Args:
-            cleaned_data: List of cleaned attendance records
-            source_filename: Source file name
-            
-        Returns:
-            Tuple of (saved_count, updated_count)
-        """
+        """Process attendance records with employee existence check"""
         saved_count = 0
         updated_count = 0
         
-        logger.info(f"[INFO] Processing {len(cleaned_data)} records from {source_filename}")
-        
         for rec in cleaned_data:
-            # Normalize employee ID
             raw_id = str(rec.get('EmpID', '')).strip()
             emp_id = normalize_emp_id(raw_id)
+            if not emp_id: continue
             
-            if not emp_id:
+            # Check if employee exists in system (Foreign Key requirement)
+            if not self.employee_repo.get_by_emp_id(emp_id):
                 continue
-            
-            # Parse date
+
             date_val = rec.get('Date')
             date_obj = parse_date(date_val)
+            if not date_obj: continue
             
-            if not date_obj:
-                logger.error(f"Could not parse date '{date_val}' for {emp_id}")
-                continue
-            
-            # Check if record exists
             existing = self.attendance_repo.get_by_emp_and_date(emp_id, date_obj)
             
-            # Prepare record data
             record_data = {
                 "first_in": format_time(rec.get('First_In')),
                 "last_out": format_time(rec.get('Last_Out')),
@@ -228,51 +181,54 @@ class AttendanceService:
                 "total_duration": format_time(rec.get('Total_Duration')),
                 "punch_records": rec.get('Punch_Records'),
                 "attendance_status": rec.get('Attendance'),
-                "employee_name": rec.get('Employee_Name'),
                 "source_file": source_filename
             }
             
             if existing:
-                # Update existing record
-                # CRITICAL: Prevent overwritting 'On Leave' with 'Absent'
                 if existing.attendance_status == "On Leave" and record_data["attendance_status"] == "Absent":
-                    logger.info(f"[SKIP-UPDATE] {emp_id} | {date_obj} | Keeping 'On Leave' status (File says Absent)")
                     record_data["attendance_status"] = "On Leave"
-                
                 self.attendance_repo.update(existing, record_data)
                 updated_count += 1
-                logger.info(f"[UPDATE] {emp_id} | {date_obj} | In: {record_data['first_in']} | Out: {record_data['last_out']}")
             else:
-                # Create new record
-                record_data.update({
-                    "emp_id": emp_id,
-                    "date": date_obj
-                })
+                record_data.update({"emp_id": emp_id, "date": date_obj})
                 self.attendance_repo.create(record_data)
                 saved_count += 1
-                logger.info(f"[INSERT] {emp_id} | {date_obj} | In: {record_data['first_in']} | Out: {record_data['last_out']}")
         
         return saved_count, updated_count
     
-    def get_attendance_records(self, user: Employee) -> List:
+    def get_attendance_records(
+        self, 
+        user: Employee, 
+        start_date_str: Optional[str] = None, 
+        end_date_str: Optional[str] = None
+    ) -> List:
         """
-        Get attendance records from 1 month ago to today (or latest available)
-        Based on user role
+        Get attendance records with optional date range
+        Defaults to last 180 days if no range provided
         """
-        # Calculate date range: 1 month ago to today
+        # Parse or calculate dates
         today = date.today()
-        one_month_ago = today - timedelta(days=30)
+        
+        if start_date_str:
+            start_date = parse_date(start_date_str)
+        else:
+            start_date = today - timedelta(days=180)
+            
+        if end_date_str:
+            end_date = parse_date(end_date_str)
+        else:
+            end_date = today
         
         if user.role == UserRole.EMPLOYEE:
             records = self.attendance_repo.get_by_date_range(
                 emp_id=user.emp_id,
-                start_date=one_month_ago,
-                end_date=today
+                start_date=start_date,
+                end_date=end_date
             )
         else:
             records = self.attendance_repo.get_by_date_range(
-                start_date=one_month_ago,
-                end_date=today
+                start_date=start_date,
+                end_date=end_date
             )
             
         # Enrich and flatten for frontend
@@ -284,7 +240,7 @@ class AttendanceService:
                 data['date'] = data['date'].isoformat()
             
             # Resolve name (owner relationship takes priority)
-            data['employee_name'] = (r.owner.full_name if r.owner else None) or r.employee_name
+            data['employee_name'] = r.owner.full_name if r.owner else "Unknown"
             result.append(data)
             
         return result

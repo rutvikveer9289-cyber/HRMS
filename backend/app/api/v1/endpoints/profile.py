@@ -14,15 +14,12 @@ from app.models.models import Employee
 router = APIRouter()
 
 class ProfileUpdate(BaseModel):
-    """Schema for profile update"""
-    full_name: Optional[str] = None
+    """Schema for profile update - restricted to non-core fields"""
     phone_number: Optional[str] = None
     designation: Optional[str] = None
     bank_name: Optional[str] = None
     bank_account_no: Optional[str] = None
     bank_ifsc_code: Optional[str] = None
-    location: Optional[str] = None
-    department: Optional[str] = None
 
 @router.get("/me")
 @router.get("")  # Alias for /profile/
@@ -78,5 +75,8 @@ async def update_my_profile(
         return {"message": "Profile updated successfully"}
     except Exception as e:
         from fastapi import HTTPException
+        # If it's already an HTTPException, re-raise it
+        if isinstance(e, HTTPException):
+            raise e
         raise HTTPException(status_code=500, detail=f"Failed to update profile: {str(e)}")
 

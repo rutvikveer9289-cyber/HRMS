@@ -50,10 +50,12 @@ class PDFService:
         elements.append(header_table)
         
         # 2. Employee Info Section
+        payment_date_str = payroll_record.payment_date.strftime('%d %b %Y') if payroll_record.payment_date else "Pending"
         emp_info_data = [
             ["Name", f": {employee_data.get('full_name', 'N/A')}", "Department", f": {employee_data.get('department', 'N/A')}"],
             ["Designation", f": {employee_data.get('designation', 'N/A')}", "Bank Name", f": {employee_data.get('bank_name', 'N/A')}"],
-            ["Location", f": {employee_data.get('location', 'N/A')}", "Bank Account No.", f": {employee_data.get('bank_account_no', 'N/A')}"]
+            ["Location", f": {employee_data.get('location', 'N/A')}", "Bank Account No.", f": {employee_data.get('bank_account_no', 'N/A')}"],
+            ["Payment Date", f": {payment_date_str}", "", ""]
         ]
         emp_info_table = Table(emp_info_data, colWidths=[1.2*inch, 2.55*inch, 1.25*inch, 2.5*inch])
         emp_info_table.setStyle(TableStyle([

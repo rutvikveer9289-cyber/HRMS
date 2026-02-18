@@ -2,7 +2,7 @@
 Employee Model
 Contains Employee model and related enums
 """
-from sqlalchemy import Column, Integer, String, DateTime, Boolean
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, Unicode
 import enum
 from app.models.base import Base, get_ist_now
 
@@ -24,7 +24,7 @@ class Employee(Base):
     __tablename__ = "employees"
 
     id = Column(Integer, primary_key=True, index=True)
-    emp_id = Column(String(50), unique=True, index=True, nullable=True)
+    emp_id = Column(Unicode(50), unique=True, index=True, nullable=True)
     full_name = Column(String(200), nullable=True)
     first_name = Column(String(100), nullable=True)
     last_name = Column(String(100), nullable=True)

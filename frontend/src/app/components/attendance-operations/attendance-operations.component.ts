@@ -74,7 +74,18 @@ export class AttendanceOperationsComponent implements OnInit, OnDestroy {
     let d = this.rawData;
     if (this.editSearchEmpId.trim()) {
       const term = this.editSearchEmpId.trim().toLowerCase();
+
+      // Normalize term if it's a number or simple RBIS format
+      let normalizedTerm = term;
+      if (term.startsWith('rbis')) {
+        const num = term.replace('rbis', '').replace(/^0+/, '');
+        if (num) normalizedTerm = 'rbis' + num.padStart(4, '0');
+      } else if (!isNaN(Number(term))) {
+        normalizedTerm = 'rbis' + term.padStart(4, '0');
+      }
+
       d = d.filter(r =>
+        (r.EmpID && r.EmpID.toLowerCase() === normalizedTerm) ||
         (r.EmpID && r.EmpID.toLowerCase() === term) ||
         (r.Employee_Name && r.Employee_Name.toLowerCase().includes(term))
       );

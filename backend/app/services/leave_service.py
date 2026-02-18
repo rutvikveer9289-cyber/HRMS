@@ -455,14 +455,27 @@ class LeaveService:
         """Add new holiday"""
         h_date = holiday_data['date']
         if isinstance(h_date, str):
+            # Take only the date part if it's an ISO string
+            h_date = h_date.split('T')[0]
             h_date = datetime.strptime(h_date, '%Y-%m-%d').date()
         
+        # Check if holiday exists on this date
+        from app.models.models import Holiday
+        existing = self.db.query(Holiday).filter(Holiday.date == h_date).first()
+        if existing:
+            raise HTTPException(status_code=400, detail=f"A holiday already exists on {h_date} ({existing.name})")
+
         holiday_data['year'] = h_date.year
         holiday_data['day'] = h_date.strftime('%A')
+        holiday_data['date'] = h_date
         
         self.leave_repo.create_holiday(holiday_data)
-        self.leave_repo.commit()
-        return {"message": f"Holiday {holiday_data['name']} added for {h_date}"}
+        try:
+            self.leave_repo.commit()
+            return {"message": f"Holiday {holiday_data['name']} added for {h_date}"}
+        except Exception as e:
+            self.leave_repo.rollback()
+            raise HTTPException(status_code=500, detail=f"Failed to add holiday: {str(e)}")
 
     def edit_holiday(self, holiday_id: int, holiday_data: dict) -> Dict:
         """Update existing holiday"""
@@ -470,17 +483,39 @@ class LeaveService:
         if not holiday:
             raise HTTPException(status_code=404, detail="Holiday not found")
         
+        # Validate name if provided
+        if 'name' in holiday_data and not holiday_data['name']:
+            raise HTTPException(status_code=400, detail="Holiday name cannot be empty")
+
         if 'date' in holiday_data:
             h_date = holiday_data['date']
+            if not h_date:
+                raise HTTPException(status_code=400, detail="Holiday date cannot be empty")
+                
             if isinstance(h_date, str):
-                h_date = datetime.strptime(h_date, '%Y-%m-%d').date()
+                try:
+                    h_date = h_date.split('T')[0]
+                    h_date = datetime.strptime(h_date, '%Y-%m-%d').date()
+                except ValueError:
+                    raise HTTPException(status_code=400, detail=f"Invalid date format: {h_date}. Expected YYYY-MM-DD")
+            
+            # Check for other holidays on this date
+            from app.models.models import Holiday
+            existing = self.db.query(Holiday).filter(Holiday.date == h_date, Holiday.id != holiday_id).first()
+            if existing:
+                raise HTTPException(status_code=400, detail=f"Another holiday already exists on {h_date} ({existing.name})")
+
             holiday_data['year'] = h_date.year
             holiday_data['day'] = h_date.strftime('%A')
             holiday_data['date'] = h_date
 
         self.leave_repo.update_holiday(holiday, holiday_data)
-        self.leave_repo.commit()
-        return {"message": f"Holiday updated successfully"}
+        try:
+            self.leave_repo.commit()
+            return {"message": "Holiday updated successfully"}
+        except Exception as e:
+            self.leave_repo.rollback()
+            raise HTTPException(status_code=500, detail=f"Failed to update holiday: {str(e)}")
 
     def remove_holiday(self, holiday_id: int) -> Dict:
         """Delete a holiday"""
@@ -489,5 +524,9 @@ class LeaveService:
             raise HTTPException(status_code=404, detail="Holiday not found")
         
         self.leave_repo.delete_holiday(holiday)
-        self.leave_repo.commit()
-        return {"message": "Holiday deleted successfully"}
+        try:
+            self.leave_repo.commit()
+            return {"message": "Holiday deleted successfully"}
+        except Exception as e:
+            self.leave_repo.rollback()
+            raise HTTPException(status_code=500, detail=f"Failed to delete holiday: {str(e)}")

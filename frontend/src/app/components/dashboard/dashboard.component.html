@@ -108,36 +108,26 @@
     </div>
 
     <!-- Analytics Insights Row -->
-    <div class="insights-row" *ngIf="!loading && hasData && canViewAll">
-      <div class="insight-card">
-        <div class="chart-header">
-          <h3>Top Overtime Earners</h3>
-          <p>Highest payout for current month</p>
-        </div>
-        <div class="chart-box-ot">
-          <canvas baseChart *ngIf="topEarners.length > 0" [data]="otChartData" [options]="otChartOptions"
-            type="bar"></canvas>
-          <div class="empty-mini" *ngIf="topEarners.length === 0">No overtime data for this month</div>
-        </div>
-      </div>
-
-      <div class="insight-card holidays">
-        <div class="chart-header">
+    <div class="insights-row-compact" *ngIf="!loading && hasData">
+      <div class="insight-card-mini holiday-insight-card">
+        <div class="insight-header">
           <h3>Upcoming Holidays</h3>
-          <p>Corporate days off</p>
+          <span class="insight-subtitle">Next few days off</span>
         </div>
-        <div class="holiday-list-mini">
-          <div class="h-item" *ngFor="let h of holidays | slice:0:3">
-            <div class="h-date">
+        <div class="holiday-horizontal-scroll">
+          <div class="h-item-tiny" *ngFor="let h of upcomingHolidays | slice:0:5">
+            <div class="h-date-tiny">
               <span class="d">{{ h.date | date:'dd' }}</span>
               <span class="m">{{ h.date | date:'MMM' }}</span>
             </div>
-            <div class="h-info">
-              <span class="name">{{ h.name }}</span>
-              <span class="day">{{ h.day }}</span>
+            <div class="h-info-tiny">
+              <div class="name" [title]="h.name">{{ h.name }}</div>
+              <div class="day">{{ h.day }}</div>
             </div>
           </div>
-          <div class="empty-mini" *ngIf="holidays.length === 0">No holidays scheduled</div>
+          <div class="empty-tiny" *ngIf="upcomingHolidays.length === 0">
+            No holidays scheduled
+          </div>
         </div>
       </div>
     </div>
@@ -190,7 +180,6 @@
       </div>
     </div>
 
-    <!-- Post Notice Modal -->
     <div class="modal-overlay" *ngIf="showNoticeModal">
       <div class="modal-card">
         <div class="modal-header">
@@ -198,25 +187,19 @@
           <button class="close-btn" (click)="toggleNoticeModal()">&times;</button>
         </div>
         <div class="modal-body">
-          <div class="form-group-modal" style="margin-bottom: 20px;">
-            <label
-              style="display: block; font-size: 13px; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">Title</label>
-            <input type="text" [(ngModel)]="newNotice.title" placeholder="Important Update..." class="form-control"
-              style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px;" />
+          <div class="form-group-modal">
+            <label>Title</label>
+            <input type="text" [(ngModel)]="newNotice.title" placeholder="Important Update..." class="form-control" />
           </div>
           <div class="form-group-modal">
-            <label
-              style="display: block; font-size: 13px; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">Message
-              Content</label>
-            <textarea [(ngModel)]="newNotice.content" placeholder="Enter details..." rows="4" class="form-control"
-              style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px;"></textarea>
+            <label>Message Content</label>
+            <textarea [(ngModel)]="newNotice.content" placeholder="Enter details..." rows="4"
+              class="form-control"></textarea>
           </div>
         </div>
-        <div class="modal-footer"
-          style="display: flex; justify-content: flex-end; gap: 12px; padding: 20px; border-top: 1px solid #f1f5f9;">
-          <button class="reset-btn" (click)="toggleNoticeModal()" [disabled]="isPosting">Cancel</button>
-          <button class="btn-primary" (click)="postAnnouncement()" [disabled]="isPosting"
-            style="background: #4f46e5; color: white;">
+        <div class="modal-footer">
+          <button class="btn-cancel-modal" (click)="toggleNoticeModal()" [disabled]="isPosting">Cancel</button>
+          <button class="btn-post-modal" (click)="postAnnouncement()" [disabled]="isPosting">
             {{ isPosting ? 'Posting...' : 'Post Notice' }}
           </button>
         </div>

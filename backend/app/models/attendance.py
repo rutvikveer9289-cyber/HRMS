@@ -2,7 +2,7 @@
 Attendance Model
 Contains Attendance tracking model
 """
-from sqlalchemy import Column, Integer, String, Date, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, Date, Boolean, ForeignKey, Unicode
 from sqlalchemy.orm import relationship, backref
 from app.models.base import Base
 
@@ -11,7 +11,7 @@ class Attendance(Base):
     __tablename__ = "attendance"
 
     id = Column(Integer, primary_key=True, index=True)
-    emp_id = Column(String(50), ForeignKey("employees.emp_id", ondelete="CASCADE"), index=True, nullable=False)
+    emp_id = Column(Unicode(50), ForeignKey("employees.emp_id", ondelete="CASCADE"), index=True, nullable=False)
     
     # Relationship to Employee
     owner = relationship("Employee", primaryjoin="Attendance.emp_id == Employee.emp_id", foreign_keys=[emp_id], backref=backref("attendance_records", cascade="all, delete-orphan"))

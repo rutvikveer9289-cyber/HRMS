@@ -32,7 +32,7 @@ class PayrollRecord(Base):
     medical_allowance = Column(DECIMAL(10, 2), default=Decimal('0.00'))
     special_allowance = Column(DECIMAL(10, 2), default=Decimal('0.00'))
     other_allowances = Column(DECIMAL(10, 2), default=Decimal('0.00'))
-    overtime_amount = Column(DECIMAL(10, 2), default=Decimal('0.00'))
+    # Overtime removed
     gross_salary = Column(DECIMAL(10, 2), nullable=False)
     total_deductions = Column(DECIMAL(10, 2), default=Decimal('0.00'))
     net_salary = Column(DECIMAL(10, 2), nullable=False)
@@ -42,7 +42,7 @@ class PayrollRecord(Base):
     absent_days = Column(DECIMAL(5, 1), nullable=True)
     on_leave_days = Column(Integer, nullable=True)
     half_days = Column(Integer, nullable=True)
-    overtime_hours = Column(DECIMAL(5, 2), default=Decimal('0.00'))
+    # overtime_hours removed
     status = Column(String(20), default="DRAFT")
     processed_at = Column(DateTime, nullable=True)
     processed_by = Column(String(50), nullable=True)

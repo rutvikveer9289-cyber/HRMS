@@ -63,6 +63,9 @@ import { CommonModule } from '@angular/common';
       margin-bottom: 0.5rem;
       color: #4f46e5;
     }
+    .stat-icon.alert {
+      color: #ff0000;
+    }
     .stat-card.amber .stat-icon {
       color: #f59e0b;
     }

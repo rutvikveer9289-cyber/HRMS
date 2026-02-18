@@ -31,8 +31,7 @@ from app.models.deduction import DeductionType, EmployeeDeduction, CalculationTy
 # Import Payroll models
 from app.models.payroll import PayrollRecord, PayrollStatus
 
-# Import Overtime models
-from app.models.overtime import OvertimeRecord, OvertimeStatus
+# Overtime models removed
 
 # Export all models and utilities
 __all__ = [
@@ -70,8 +69,4 @@ __all__ = [
     # Payroll
     "PayrollRecord",
     "PayrollStatus",
-
-    # Overtime
-    "OvertimeRecord",
-    "OvertimeStatus",
 ]

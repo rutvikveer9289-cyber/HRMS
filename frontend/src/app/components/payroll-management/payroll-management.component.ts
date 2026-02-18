@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PayrollService } from '../../services/payroll.service';
 import { SalaryService } from '../../services/salary.service';
-import { OvertimeService } from '../../services/overtime.service';
+
 import { AuthService } from '../../services/auth.service';
 import { DeductionService } from '../../services/deduction.service';
 
@@ -69,8 +69,7 @@ export class PayrollManagementComponent implements OnInit {
   };
 
   // Overtime data
-  overtimeRecords: any[] = [];
-  pendingOvertimeApprovals: any[] = [];
+
 
   // Payment tracking
   paymentFilter: string = 'all'; // 'all', 'paid', 'pending'
@@ -82,7 +81,7 @@ export class PayrollManagementComponent implements OnInit {
   constructor(
     private payrollService: PayrollService,
     private salaryService: SalaryService,
-    private overtimeService: OvertimeService,
+    // OvertimeService removed
     private authService: AuthService,
     private deductionService: DeductionService
   ) { }
@@ -255,7 +254,7 @@ export class PayrollManagementComponent implements OnInit {
     const numericFields = [
       'basic_salary', 'hra', 'transport_allowance', 'dearness_allowance',
       'medical_allowance', 'special_allowance', 'other_allowances',
-      'overtime_amount', 'total_deductions'
+      'total_deductions'
     ];
 
     numericFields.forEach(key => {
@@ -341,7 +340,6 @@ export class PayrollManagementComponent implements OnInit {
     } else if (tab === 'history' && this.canManagePayroll) {
       this.loadAllHistory();
     } else if (tab === 'overtime' && this.canManagePayroll) {
-      this.loadPendingOvertimeApprovals();
     } else if (tab === 'deductions' && this.canManagePayroll) {
       this.loadDeductionTypes();
     } else if (tab === 'my-payslips') {
@@ -435,6 +433,25 @@ export class PayrollManagementComponent implements OnInit {
         }
       });
     }
+  }
+
+  deletePayrollRecord(id: number): void {
+    if (!confirm('Are you sure you want to delete this payroll record? This will revert the processing status for this employee for the month.')) {
+      return;
+    }
+
+    this.loading = true;
+    this.payrollService.deletePayrollRecord(id).subscribe({
+      next: () => {
+        alert('Payroll record deleted successfully');
+        this.loadPayrollRecords();
+      },
+      error: (err) => {
+        console.error('Error deleting payroll:', err);
+        alert('Error deleting payroll: ' + (err.error?.detail || err.message));
+        this.loading = false;
+      }
+    });
   }
 
   processSinglePayroll(): void {
@@ -552,45 +569,7 @@ export class PayrollManagementComponent implements OnInit {
   }
 
   // Overtime Methods
-  loadPendingOvertimeApprovals(): void {
-    this.overtimeService.getPendingApprovals().subscribe({
-      next: (data) => {
-        this.pendingOvertimeApprovals = data;
-      },
-      error: (err) => {
-        console.error('Error loading overtime approvals:', err);
-      }
-    });
-  }
 
-  approveOvertime(overtimeId: number): void {
-    this.overtimeService.approveOvertime(overtimeId, 'APPROVE').subscribe({
-      next: () => {
-        alert('Overtime approved');
-        this.loadPendingOvertimeApprovals();
-      },
-      error: (err) => {
-        console.error('Error approving overtime:', err);
-        alert('Error approving overtime');
-      }
-    });
-  }
-
-  rejectOvertime(overtimeId: number): void {
-    const remarks = prompt('Enter rejection reason:');
-    if (remarks) {
-      this.overtimeService.approveOvertime(overtimeId, 'REJECT', remarks).subscribe({
-        next: () => {
-          alert('Overtime rejected');
-          this.loadPendingOvertimeApprovals();
-        },
-        error: (err) => {
-          console.error('Error rejecting overtime:', err);
-          alert('Error rejecting overtime');
-        }
-      });
-    }
-  }
 
   // Deduction Methods
   loadDeductionTypes(): void {

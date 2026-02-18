@@ -3,7 +3,7 @@ API v1 Endpoints Router
 Registers all v1 API endpoints
 """
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, attendance, leave, admin, profile, records, onboarding, salary, deduction, payroll, overtime, razorpay, communication
+from app.api.v1.endpoints import auth, attendance, leave, admin, profile, records, onboarding, salary, deduction, payroll, razorpay, communication
 
 api_router = APIRouter()
 
@@ -20,6 +20,6 @@ api_router.include_router(communication.router, prefix="/comms", tags=["Communic
 # Payroll routers
 api_router.include_router(salary.router, tags=["Salary"])
 api_router.include_router(deduction.router, tags=["Deductions"])
-api_router.include_router(overtime.router, tags=["Overtime"])
+# Overtime removed
 api_router.include_router(payroll.router, tags=["Payroll"])
 api_router.include_router(razorpay.router, prefix="/razorpay", tags=["Payments"])

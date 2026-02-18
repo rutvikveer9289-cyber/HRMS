@@ -40,26 +40,19 @@ class AdminService:
         Raises:
             HTTPException: If validation fails
         """
-        # HR cannot edit
-        if admin.role == UserRole.HR:
-            raise HTTPException(
-                status_code=403,
-                detail="HR cannot perform edit actions"
-            )
+        # Admin check already done in dependency, but we can verify role-specific logic here
+        # Allowing HR to edit now
         
         # Get employee
         employee = self.employee_repo.get_by_db_id(emp_id)
         if not employee:
             raise HTTPException(status_code=404, detail="Employee not found")
         
-        # Check for conflicts
-        if 'emp_id' in update_data or 'email' in update_data:
-            conflict = self._check_conflicts(emp_id, update_data)
-            if conflict:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Employee ID or Email already exists"
-                )
+        # Prevent immutable fields from being updated
+        if 'emp_id' in update_data:
+            del update_data['emp_id']
+        if 'email' in update_data:
+            del update_data['email']
         
         # Update fields
         for key, value in update_data.items():
@@ -120,40 +113,74 @@ class AdminService:
         import pandas as pd
         import io
         
-        # HR cannot perform sync
-        if admin.role == UserRole.HR:
-            raise HTTPException(status_code=403, detail="HR cannot perform sync actions")
+        # Admin check already done in dependency
+        # Allowing HR to perform sync now
             
         content = await file.read()
         df = pd.read_excel(io.BytesIO(content))
         
-        required_cols = ['emp_id', 'full_name', 'email', 'designation']
-        for col in required_cols:
-            if col not in df.columns:
-                raise HTTPException(status_code=400, detail=f"Missing required column: {col}")
+        # Flexibly detect columns
+        col_map = {
+            'emp_id': ['emp_id', 'empid', 'employee id', 'id', 'employee code'],
+            'full_name': ['full_name', 'name', 'employee name', 'fullname'],
+            'email': ['email', 'email address', 'mail'],
+            'designation': ['designation', 'role', 'position'],
+            'phone_number': ['phone_number', 'phone', 'mobile', 'contact'],
+            'first_name': ['first_name', 'firstname'],
+            'last_name': ['last_name', 'lastname']
+        }
+        
+        found_map = {}
+        df_cols = [c.lower() for c in df.columns]
+        
+        for official, aliases in col_map.items():
+            for i, col in enumerate(df.columns):
+                if col.lower() in aliases:
+                    found_map[official] = col
+                    break
+        
+        if 'emp_id' not in found_map or 'email' not in found_map:
+            raise HTTPException(status_code=400, detail="Missing critical columns: EmpId and Email are required.")
         
         saved = 0
         updated = 0
         
+        from app.utils.file_utils import normalize_emp_id
+        
         for _, row in df.iterrows():
-            emp_id = str(row['emp_id']).strip()
-            if not emp_id or emp_id == 'nan': continue
+            raw_id = str(row[found_map['emp_id']]).strip()
+            if not raw_id or raw_id.lower() == 'nan': continue
             
-            existing = self.employee_repo.get_by_emp_id(emp_id)
+            emp_id = normalize_emp_id(raw_id)
+            
+            email = str(row[found_map['email']]).strip()
+            if not email or '@' not in email: continue
+            
+            existing = self.employee_repo.get_by_emp_id(emp_id) or self.employee_repo.get_by_email(email)
+            
             data = {
-                "full_name": row['full_name'],
-                "email": row['email'],
-                "designation": row['designation'],
-                "phone_number": str(row.get('phone_number', '')),
+                "full_name": row.get(found_map.get('full_name')),
+                "email": email,
+                "designation": row.get(found_map.get('designation')),
+                "phone_number": str(row.get(found_map.get('phone_number'), '')),
+                "first_name": row.get(found_map.get('first_name')),
+                "last_name": row.get(found_map.get('last_name')),
                 "status": "ACTIVE"
             }
             
             if existing:
-                for key, val in data.items():
-                    setattr(existing, key, val)
+                # Do not update email or emp_id for existing records
+                update_fields = ["full_name", "designation", "phone_number", "status", "first_name", "last_name"]
+                for key in update_fields:
+                    if key in data and data[key] is not None:
+                        setattr(existing, key, data[key])
                 updated += 1
             else:
                 data["emp_id"] = emp_id
+                # Add default password hash for new imports
+                from app.core.security import get_password_hash
+                data["password_hash"] = get_password_hash("Test@123")
+                data["is_verified"] = True
                 self.employee_repo.create(data)
                 saved += 1
                 

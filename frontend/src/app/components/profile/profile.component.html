@@ -6,12 +6,13 @@
           <i data-lucide="user"></i>
         </div>
         <div class="header-info">
+          <p class="section-subtitle">My Profile</p>
           <h2>{{ profile.full_name }}</h2>
           <span class="designation">{{ profile.designation }}</span>
           <span class="id-badge">{{ profile.emp_id }}</span>
         </div>
         <div class="header-actions">
-          <button class="btn-edit" (click)="toggleEdit()" *ngIf="!editing">
+          <button class="btn-edit" (click)="toggleEdit()" *ngIf="!editing && isAdmin">
             Edit Profile
           </button>
         </div>
@@ -56,7 +57,11 @@
         <div class="form-grid">
           <div class="form-group">
             <label>Full Name</label>
-            <input type="text" [(ngModel)]="editProfile.full_name" />
+            <input type="text" [value]="editProfile.full_name" disabled class="read-only-input" />
+          </div>
+          <div class="form-group">
+            <label>Designation</label>
+            <input type="text" [(ngModel)]="editProfile.designation" />
           </div>
           <div class="form-group">
             <label>Phone Number</label>
@@ -64,11 +69,11 @@
           </div>
           <div class="form-group">
             <label>Department</label>
-            <input type="text" [(ngModel)]="editProfile.department" />
+            <input type="text" [value]="editProfile.department || 'N/A'" disabled class="read-only-input" />
           </div>
           <div class="form-group">
             <label>Location</label>
-            <input type="text" [(ngModel)]="editProfile.location" />
+            <input type="text" [value]="editProfile.location || 'N/A'" disabled class="read-only-input" />
           </div>
           <div class="form-group">
             <label>Bank Name</label>

@@ -3,7 +3,8 @@
   <div class="auth-card">
     <div class="auth-header">
       <div class="logo">
-        <span>RBIS Tech Pvt Ltd</span>
+        <img _ngcontent-ng-c2368625669="" src="https://huntscaler.blob.core.windows.net/rbisimages/rbis logo .svg"
+          alt="Logo" height="60">
       </div>
       <h1>Welcome Back</h1>
       <p>Enter your credentials to access the dashboard</p>
@@ -14,7 +15,7 @@
         <label for="email">Office Email</label>
         <div class="input-wrapper">
           <i data-lucide="mail"></i>
-          <input type="email" id="email" name="email" [(ngModel)]="loginData.email" placeholder="email@office.com"
+          <input type="email" id="email" name="email" [(ngModel)]="loginData.email" placeholder="name@rbistech.com"
             required email #email="ngModel" />
         </div>
         <div *ngIf="email.invalid && email.touched" class="field-error">
@@ -41,8 +42,11 @@
         </div>
         <div class="input-wrapper">
           <i data-lucide="lock"></i>
-          <input type="password" id="password" name="password" [(ngModel)]="loginData.password" placeholder="••••••••"
-            required />
+          <input [type]="showPassword ? 'text' : 'password'" id="password" name="password"
+            [(ngModel)]="loginData.password" [placeholder]="showPassword ? 'Enter Password' : '••••••••'" required />
+          <button type="button" class="toggle-password" (click)="showPassword = !showPassword">
+            <i [attr.data-lucide]="showPassword ? 'eye-off' : 'eye'"></i>
+          </button>
         </div>
       </div>
 
@@ -81,7 +85,7 @@
           <label>Email Address</label>
           <div class="input-wrapper">
             <i data-lucide="mail"></i>
-            <input type="email" [(ngModel)]="forgotEmail" placeholder="email@office.com" required />
+            <input type="email" [(ngModel)]="forgotEmail" placeholder="name@rbistech.com" required />
           </div>
         </div>
         <div *ngIf="error" class="error-msg">
@@ -110,14 +114,19 @@
           <label>New Password</label>
           <div class="input-wrapper">
             <i data-lucide="lock"></i>
-            <input type="password" [(ngModel)]="newPassword" placeholder="••••••••" required />
+            <input [type]="showNewPassword ? 'text' : 'password'" [(ngModel)]="newPassword"
+              [placeholder]="showNewPassword ? 'Enter New Password' : '••••••••'" required />
+            <button type="button" class="toggle-password" (click)="showNewPassword = !showNewPassword">
+              <i [attr.data-lucide]="showNewPassword ? 'eye-off' : 'eye'"></i>
+            </button>
           </div>
         </div>
         <div class="form-group">
           <label>Confirm New Password</label>
           <div class="input-wrapper">
             <i data-lucide="shield-check"></i>
-            <input type="password" [(ngModel)]="confirmNewPassword" placeholder="••••••••" required />
+            <input [type]="showNewPassword ? 'text' : 'password'" [(ngModel)]="confirmNewPassword"
+              [placeholder]="showNewPassword ? 'Re-enter New Password' : '••••••••'" required />
           </div>
         </div>
         <div *ngIf="error" class="error-msg">

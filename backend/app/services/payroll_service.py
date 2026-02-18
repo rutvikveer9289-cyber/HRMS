@@ -7,7 +7,6 @@ from fastapi import HTTPException
 from app.repositories.payroll_repository import PayrollRepository
 from app.repositories.salary_repository import SalaryRepository
 from app.repositories.deduction_repository import DeductionRepository
-from app.repositories.overtime_repository import OvertimeRepository
 from app.repositories.attendance_repository import AttendanceRepository
 from decimal import Decimal
 from datetime import date, timedelta
@@ -22,7 +21,6 @@ class PayrollService:
         self.payroll_repo = PayrollRepository(db)
         self.salary_repo = SalaryRepository(db)
         self.deduction_repo = DeductionRepository(db)
-        self.overtime_repo = OvertimeRepository(db)
         self.attendance_repo = AttendanceRepository(db)
     
     def process_payroll(self, emp_id: str, month: int, year: int, processed_by: str) -> dict:
@@ -55,23 +53,28 @@ class PayrollService:
         working_days = self._get_working_days(month, year)
         attendance_data = self._get_attendance_summary(emp_id, month, year)
         
-        # Get overtime
-        start_date = date(year, month, 1)
-        if month == 12:
-            end_date = date(year + 1, 1, 1) - timedelta(days=1)
-        else:
-            end_date = date(year, month + 1, 1) - timedelta(days=1)
-        
-        overtime_amount = self.overtime_repo.get_total_overtime_amount(emp_id, start_date, end_date)
-        overtime_hours = self.overtime_repo.get_total_overtime_hours(emp_id, start_date, end_date)
+        # Overtime calculation removed
         
         # Calculate deductions
         deductions = self._calculate_deductions(emp_id, salary)
         total_deductions = sum(d['amount'] for d in deductions)
         
-        # Calculate net salary
+        # Calculate net salary with LOP (Loss of Pay)
         gross_salary = salary.gross_salary
-        net_salary = gross_salary + overtime_amount - Decimal(str(total_deductions))
+        
+        # PAID DAYS = present_days (which includes 0.5 for half days) + on_leave_days
+        paid_days = Decimal(str(attendance_data['present_days'])) + Decimal(str(attendance_data['on_leave_days']))
+        
+        # Net before deductions (proportionate to attendance)
+        if working_days > 0:
+            prorated_salary = (gross_salary / Decimal(str(working_days))) * paid_days
+        else:
+            prorated_salary = Decimal('0.00')
+            
+        net_salary = prorated_salary - Decimal(str(total_deductions))
+        
+        # Ensure net salary is not negative
+        net_salary = max(Decimal('0.00'), net_salary)
         
         # Create payroll record
         payroll_data = {
@@ -85,7 +88,6 @@ class PayrollService:
             "medical_allowance": salary.medical_allowance,
             "special_allowance": salary.special_allowance,
             "other_allowances": salary.other_allowances,
-            "overtime_amount": overtime_amount,
             "gross_salary": gross_salary,
             "total_deductions": Decimal(str(total_deductions)),
             "net_salary": net_salary,
@@ -94,8 +96,6 @@ class PayrollService:
             "present_days": Decimal(str(attendance_data['present_days'])),
             "absent_days": Decimal(str(attendance_data['absent_days'])),
             "on_leave_days": attendance_data['on_leave_days'],
-            "half_days": attendance_data['half_days'],
-            "overtime_hours": overtime_hours,
             "status": "PROCESSED",
             "processed_by": processed_by
         }
@@ -142,7 +142,7 @@ class PayrollService:
                 # Convert float to Decimal for currency fields
                 if key in ['basic_salary', 'hra', 'transport_allowance', 'dearness_allowance', 
                           'medical_allowance', 'special_allowance', 'other_allowances', 
-                          'overtime_amount', 'total_deductions']:
+                          'total_deductions']:
                     setattr(payroll, key, Decimal(str(value)))
                 else:
                     setattr(payroll, key, value)
@@ -155,8 +155,7 @@ class PayrollService:
             payroll.dearness_allowance + 
             payroll.medical_allowance + 
             payroll.special_allowance + 
-            payroll.other_allowances + 
-            payroll.overtime_amount
+            payroll.other_allowances
         )
         payroll.gross_salary = gross
         
@@ -167,6 +166,17 @@ class PayrollService:
              payroll.processed_by = updated_by # Optionally track who updated it last
 
         return self.payroll_repo.update(payroll)
+
+    def delete_payroll_record(self, payroll_id: int):
+        """Delete a payroll record"""
+        payroll = self.payroll_repo.get_by_id(payroll_id)
+        if not payroll:
+            raise HTTPException(status_code=404, detail="Payroll record not found")
+        
+        if payroll.status == "PAID":
+            raise HTTPException(status_code=400, detail="Cannot delete a record that has already been PAID")
+        
+        return self.payroll_repo.delete(payroll)
     
     def get_payroll_list(self, month: int = None, year: int = None, status: str = None):
         """Get list of payroll records with filters"""
@@ -229,21 +239,18 @@ class PayrollService:
         attendance_records = self.attendance_repo.get_by_emp_date_range(emp_id, start_date, end_date)
         
         present_days = len([a for a in attendance_records if a.attendance_status == "Present"])
-        half_days = len([a for a in attendance_records if a.attendance_status == "Half Day"])
         on_leave_days = len([a for a in attendance_records if a.attendance_status == "On Leave"])
         working_days = self._get_working_days(month, year)
         
-        # Effective present days (Full + 0.5 * Half)
-        effective_present = float(present_days) + (float(half_days) * 0.5)
+        # Effective present days
+        effective_present = float(present_days)
         
-        # Absent is whatever is not explicitly Present, Half Day, or On Leave
-        # Plus the missing half from Half Days
+        # Absent is whatever is not explicitly Present or On Leave
         absent_days = max(0.0, float(working_days) - effective_present - float(on_leave_days))
         
         return {
             "present_days": effective_present,
             "on_leave_days": on_leave_days,
-            "half_days": half_days,
             "absent_days": absent_days,
             "working_days": working_days
         }

@@ -83,6 +83,7 @@ export class AppComponent implements OnInit {
     if (this.notificationMenuOpen) {
       this.profileMenuOpen = false;
       this.sidebarOpen = false;
+      this.mainMenuOpen = false;
       // Mark all as read when opening to clear the badge
       if (this.unreadCount > 0) {
         this.markAllAsRead();
@@ -183,7 +184,15 @@ export class AppComponent implements OnInit {
     if (this.sidebarOpen) {
       this.profileMenuOpen = false;
       this.mainMenuOpen = false;
+      this.notificationMenuOpen = false;
     }
+  }
+
+  resetMenus() {
+    this.sidebarOpen = false;
+    this.notificationMenuOpen = false;
+    this.profileMenuOpen = false;
+    this.mainMenuOpen = false;
   }
 
   logout() {

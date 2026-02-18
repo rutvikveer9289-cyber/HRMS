@@ -346,7 +346,7 @@ class PayrollRecordUpdate(BaseModel):
     medical_allowance: Optional[float] = Field(None, ge=0)
     special_allowance: Optional[float] = Field(None, ge=0)
     other_allowances: Optional[float] = Field(None, ge=0)
-    overtime_amount: Optional[float] = Field(None, ge=0)
+    # overtime_amount removed
     total_deductions: Optional[float] = Field(None, ge=0)
     remarks: Optional[str] = Field(None, max_length=500)
 
@@ -373,14 +373,14 @@ class PayrollRecordResponse(BaseModel):
     medical_allowance: float
     special_allowance: float
     other_allowances: float
-    overtime_amount: float
+    # overtime_amount removed
     gross_salary: float
     total_deductions: float
     net_salary: float
     working_days: Optional[int] = None
     present_days: Optional[int] = None
     absent_days: Optional[int] = None
-    overtime_hours: float
+    # overtime_hours removed
     status: str
     payment_date: Optional[datetime.date] = None
     payment_method: Optional[str] = None
@@ -390,53 +390,4 @@ class PayrollRecordResponse(BaseModel):
     owner: Optional[EmployeeResponse] = None
     
     model_config = ConfigDict(from_attributes=True)
-
-
-class OvertimeCalculateRequest(BaseModel):
-    """Overtime calculation request validation"""
-    emp_id: str
-    start_date: datetime.date
-    end_date: datetime.date
-    overtime_rate: Optional[float] = Field(default=1.5, ge=1.0, le=3.0)
-    
-    @field_validator('end_date')
-    @classmethod
-    def validate_date_range(cls, v: str, info) -> str:
-        if 'start_date' in info.data:
-            if v < info.data['start_date']:
-                raise ValueError('End date must be after start date')
-        return v
-
-
-class OvertimeRecordResponse(BaseModel):
-    """Overtime record response schema"""
-    id: int
-    emp_id: str
-    date: datetime.date
-    regular_hours: float
-    actual_hours: float
-    overtime_hours: float
-    overtime_rate: float
-    overtime_amount: Optional[float] = None
-    status: str
-    approved_by: Optional[str] = None
-    approved_at: Optional[datetime.datetime] = None
-    remarks: Optional[str] = None
-    created_at: datetime.datetime
-    
-    model_config = ConfigDict(from_attributes=True)
-
-
-class OvertimeApprovalRequest(BaseModel):
-    """Overtime approval request validation"""
-    overtime_id: int = Field(..., gt=0)
-    action: str = Field(..., description="APPROVE or REJECT")
-    remarks: Optional[str] = Field(None, max_length=500)
-    
-    @field_validator('action')
-    @classmethod
-    def validate_action(cls, v: str) -> str:
-        if v.upper() not in ['APPROVE', 'REJECT']:
-            raise ValueError('Action must be APPROVE or REJECT')
-        return v.upper()
 

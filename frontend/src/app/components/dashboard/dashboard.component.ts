@@ -11,7 +11,8 @@ import { NotificationService } from '../../services/notification.service';
 import { LeaveService } from '../../services/leave.service';
 import { StatsGridComponent } from './stats-grid.component';
 import { CommunicationService, Announcement } from '../../services/communication.service';
-import { OvertimeService } from '../../services/overtime.service';
+
+import { AdminService } from '../../services/admin.service';
 
 Chart.register(...registerables);
 
@@ -56,6 +57,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     // UI Metadata
     activeEmployee: any = null;
+    allEmployees: any[] = [];
 
     // Chart Configuration
     public pieChartOptions: ChartOptions<'pie'> = {
@@ -67,7 +69,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     public barChartOptions: ChartOptions<'bar'> = {
         responsive: true,
         maintainAspectRatio: false,
-        scales: { y: { min: 0 } },
+        scales: {
+            y: { min: 0, stacked: true },
+            x: { stacked: true }
+        },
         plugins: {
             legend: { display: true },
             tooltip: {
@@ -76,19 +81,23 @@ export class DashboardComponent implements OnInit, OnDestroy {
                         const index = context.dataIndex;
                         const label = context.dataset.label || '';
                         const val = (context.parsed && typeof context.parsed.y === 'number') ? context.parsed.y : 0;
-
-                        // Access the cached dailyStats via a private ref or recalculate
-                        // For simplicity, we can store dailyStats in a component property
                         const stats = this.dailyChartStats[index];
                         if (stats) {
                             if (this.activeEmployee) {
                                 return `Hours: ${val.toFixed(1)}h`;
                             }
-                            return [
-                                `${label}: ${val}`,
-                                `Absent: ${stats.absent}`,
-                                `Avg Hours: ${stats.avgH.toFixed(1)}h`
+                            const currentSum = stats.present + stats.absent + stats.onLeave;
+                            const headCount = this.allEmployees && this.allEmployees.length > 0 ? this.allEmployees.length : currentSum;
+                            const lines = [
+                                `Status: ${label}`,
+                                `---`,
+                                `Present: ${stats.present}`,
+                                `Absent: ${stats.absent}`
                             ];
+                            if (stats.onLeave > 0) lines.push(`On Leave: ${stats.onLeave}`);
+                            lines.push(`Total Workforce: ${headCount}`);
+                            lines.push(`Avg Hours: ${stats.avgH.toFixed(1)}h`);
+                            return lines;
                         }
                         return `${label}: ${val}`;
                     }
@@ -131,15 +140,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
     };
 
     private dailyChartStats: any[] = [];
-    holidays: any[] = [];
-    topEarners: any[] = [];
-    public otChartData: ChartConfiguration<'bar'>['data'] = { labels: [], datasets: [] };
-    public otChartOptions: ChartOptions<'bar'> = {
-        responsive: true,
-        maintainAspectRatio: false,
-        indexAxis: 'y',
-        plugins: { legend: { display: false } }
-    };
+    allHolidays: any[] = [];
+    upcomingHolidays: any[] = [];
+
 
     constructor(
         private attendanceService: AttendanceService,
@@ -147,7 +150,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         private notificationService: NotificationService,
         private leaveService: LeaveService,
         private commService: CommunicationService,
-        private overtimeService: OvertimeService
+        private adminService: AdminService
     ) { }
 
     ngOnInit() {
@@ -163,20 +166,22 @@ export class DashboardComponent implements OnInit, OnDestroy {
         }
 
         // Fetch Holidays
+        const todayStr = new Date().toISOString().split('T')[0];
         this.leaveService.getHolidays().subscribe(data => {
-            this.holidays = data;
+            this.allHolidays = data;
+            this.upcomingHolidays = data.filter((h: any) => String(h.date).split('T')[0] >= todayStr);
             if (this.attendanceService.typeAData.length > 0) this.syncData();
         });
 
-        // Fetch Top Earners
-        const now = new Date();
-        this.overtimeService.getTopEarners(now.getMonth() + 1, now.getFullYear()).subscribe(data => {
-            this.topEarners = data;
-            this.processOvertimeChart();
-        });
+
 
         this.loading = true;
-        this.attendanceService.fetchAttendance();
+
+        // Fetch All Employees first to know who is absent
+        this.adminService.getEmployees().subscribe(emps => {
+            this.allEmployees = emps;
+            this.attendanceService.fetchAttendance();
+        });
 
         this.subs.add(this.attendanceService.typeAData$.subscribe(() => {
             this.syncData();
@@ -218,8 +223,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
                 existing.Out_Duration = existing.Out_Duration || rec.Out_Duration;
                 existing.Total_Duration = existing.Total_Duration || rec.Total_Duration;
 
-                // Priority: Present > Half Day > On Leave > Absent
-                const priority: { [key: string]: number } = { 'Present': 3, 'On Leave': 1, 'Absent': 0 };
+                // Priority: Present > On Leave > Absent
+                const priority: { [key: string]: number } = { 'Present': 2, 'On Leave': 1, 'Absent': 0 };
                 const currentStatus = rec.Attendance || 'Absent';
                 const existingStatus = existing.Attendance || 'Absent';
 
@@ -229,12 +234,42 @@ export class DashboardComponent implements OnInit, OnDestroy {
             }
         });
 
+        this.rawData = Array.from(mergeMap.values());
+
+        // Fill gaps for missing employees on existing dates
+        if (this.allEmployees.length > 0) {
+            const datesInRecords = [...new Set(this.rawData.map(r => String(r.Date).split('T')[0]))].sort();
+
+            datesInRecords.forEach(dateStr => {
+                this.allEmployees.forEach(emp => {
+                    const key = `${emp.EmpID}_${dateStr}`;
+                    if (!mergeMap.has(key)) {
+                        mergeMap.set(key, {
+                            Date: dateStr,
+                            EmpID: emp.EmpID,
+                            Employee_Name: emp.Name,
+                            Attendance: 'Absent',
+                            First_In: '--:--',
+                            Last_Out: '--:--',
+                            In_Duration: '00:00',
+                            Total_Duration: '00:00'
+                        });
+                    } else {
+                        const rec = mergeMap.get(key);
+                        if (!rec.Employee_Name || rec.Employee_Name === 'Unknown' || rec.Employee_Name === '--') {
+                            rec.Employee_Name = emp.Name;
+                        }
+                    }
+                });
+            });
+        }
+
         this.rawData = Array.from(mergeMap.values()).filter((rec: any) => {
             const dateStr = String(rec.Date).split('T')[0];
             const date = new Date(rec.Date);
 
             const isSunday = date.getDay() === 0;
-            const isHoliday = this.holidays.some(h => h.date === dateStr);
+            const isHoliday = this.allHolidays.some(h => String(h.date).split('T')[0] === dateStr);
 
             if ((isSunday || isHoliday) && rec.Attendance !== 'Present') {
                 return false;
@@ -419,23 +454,25 @@ export class DashboardComponent implements OnInit, OnDestroy {
             labels: labels,
             datasets: [
                 {
-                    data: dailyStats.map(s => isSingleEmp && s.present === 0 ? 0 : s.avgH || (isSingleEmp && s.present ? 8 : s.present)),
+                    data: dailyStats.map(s => isSingleEmp ? (s.present > 0 ? (s.avgH || 8) : 0) : s.present),
                     label: isSingleEmp ? 'Office Hours' : 'Present',
-                    backgroundColor: isSingleEmp ? '#10b981' : '#4f46e5',
-                    borderRadius: 6
+                    backgroundColor: '#1e3a5f',
+                    borderRadius: 6,
+                    stack: 'attendance'
                 },
                 {
                     data: dailyStats.map(s => isSingleEmp ? (s.absent > 0 ? 1 : 0) : s.absent),
                     label: 'Absent',
-                    backgroundColor: '#f87171',
+                    backgroundColor: '#9e9e9e',
                     borderRadius: 6,
-                    // If single emp, show as a small indicator bar if height is 0
+                    stack: 'attendance'
                 },
                 {
                     data: dailyStats.map(s => isSingleEmp ? (s.onLeave > 0 ? 1 : 0) : s.onLeave),
                     label: 'On Leave',
-                    backgroundColor: '#93c5fd',
-                    borderRadius: 6
+                    backgroundColor: '#ffa500',
+                    borderRadius: 6,
+                    stack: 'attendance'
                 }
             ]
         };
@@ -461,7 +498,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
             labels: ['Present', 'Absent', 'On Leave'],
             datasets: [{
                 data: [totalPresent, totalAbsent, totalLeave],
-                backgroundColor: ['#4f46e5', '#f87171', '#93c5fd'],
+                backgroundColor: ['#1e3a5f', '#9e9e9e', '#ffa500'],
                 borderWidth: 0
             }]
         };
@@ -558,17 +595,5 @@ export class DashboardComponent implements OnInit, OnDestroy {
         }
     }
 
-    processOvertimeChart() {
-        if (!this.topEarners || this.topEarners.length === 0) return;
 
-        this.otChartData = {
-            labels: this.topEarners.map(e => e.full_name),
-            datasets: [{
-                data: this.topEarners.map(e => e.total_amount),
-                label: 'Overtime Pay',
-                backgroundColor: '#fbbf24',
-                borderRadius: 4
-            }]
-        };
-    }
 }

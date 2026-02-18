@@ -30,7 +30,7 @@
             <ng-container *ngIf="editingEmployee?.id !== emp.id">
               <span class="badge-id">{{ emp.emp_id }}</span>
             </ng-container>
-            <input *ngIf="editingEmployee?.id === emp.id" [(ngModel)]="editingEmployee.emp_id" class="edit-input" />
+            <div *ngIf="editingEmployee?.id === emp.id" class="badge-id opacity-70">{{ editingEmployee.emp_id }}</div>
           </td>
           <td>
             <ng-container *ngIf="editingEmployee?.id !== emp.id">
@@ -42,7 +42,7 @@
             <ng-container *ngIf="editingEmployee?.id !== emp.id">
               {{ emp.email }}
             </ng-container>
-            <input *ngIf="editingEmployee?.id === emp.id" [(ngModel)]="editingEmployee.email" class="edit-input" />
+            <div *ngIf="editingEmployee?.id === emp.id" class="read-only-text">{{ editingEmployee.email }}</div>
           </td>
           <td>
             <ng-container *ngIf="editingEmployee?.id !== emp.id">

@@ -23,11 +23,11 @@ export class EmployeeManagementComponent implements OnInit {
     private adminService: AdminService,
     private notificationService: NotificationService,
     private authService: AuthService
-  ) {}
+  ) { }
 
   ngOnInit(): void {
     const role = this.authService.getUserRole();
-    this.canEdit = role === 'SUPER_ADMIN' || role === 'CEO';
+    this.canEdit = role === 'SUPER_ADMIN' || role === 'CEO' || role === 'HR';
     this.loadEmployees();
   }
 
@@ -35,9 +35,9 @@ export class EmployeeManagementComponent implements OnInit {
     this.adminService.getEmployees().subscribe({
       next: (data) => {
         this.employees = data.sort((a, b) => {
-            const idA = a.emp_id || '';
-            const idB = b.emp_id || '';
-            return idA.localeCompare(idB, undefined, { numeric: true, sensitivity: 'base' });
+          const idA = a.emp_id || '';
+          const idB = b.emp_id || '';
+          return idA.localeCompare(idB, undefined, { numeric: true, sensitivity: 'base' });
         });
         this.filterEmployees();
       },
@@ -50,8 +50,19 @@ export class EmployeeManagementComponent implements OnInit {
       this.filteredEmployees = this.employees;
     } else {
       const term = this.searchTerm.toLowerCase();
-      this.filteredEmployees = this.employees.filter(e => 
-        (e.full_name && e.full_name.toLowerCase().includes(term)) || 
+
+      // Normalize term if it's a number or simple RBIS format
+      let normalizedTerm = term;
+      if (term.startsWith('rbis')) {
+        const num = term.replace('rbis', '').replace(/^0+/, '');
+        if (num) normalizedTerm = 'rbis' + num.padStart(4, '0');
+      } else if (!isNaN(Number(term))) {
+        normalizedTerm = 'rbis' + term.padStart(4, '0');
+      }
+
+      this.filteredEmployees = this.employees.filter(e =>
+        (e.full_name && e.full_name.toLowerCase().includes(term)) ||
+        (e.emp_id && e.emp_id.toLowerCase() === normalizedTerm) ||
         (e.emp_id && e.emp_id.toLowerCase().includes(term)) ||
         (e.email && e.email.toLowerCase().includes(term)) ||
         (e.phone_number && e.phone_number.toLowerCase().includes(term)) ||

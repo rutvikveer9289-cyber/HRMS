@@ -90,6 +90,10 @@ def complete_onboarding(
     - Requires HR role
     """
     repo = EmployeeRepository(db)
+    from app.utils.file_utils import normalize_emp_id
+    
+    # Normalize the incoming ID
+    normalized_id = normalize_emp_id(data.emp_id)
     
     # If using /onboard, email might be in data? Let's check frontend.
     # Frontend sends full employee object.
@@ -125,13 +129,13 @@ def complete_onboarding(
             employee = None 
 
     # Check if emp_id already exists for ANOTHER employee
-    existing_id_holder = repo.get_by_emp_id(data.emp_id)
+    existing_id_holder = repo.get_by_emp_id(normalized_id)
     if existing_id_holder:
         # If ID exists and it's NOT the same employee we are updating (or we are creating new)
         if not employee or existing_id_holder.id != employee.id:
             raise HTTPException(
                 status_code=400,
-                detail=f"Employee ID {data.emp_id} is already assigned to {existing_id_holder.full_name}"
+                detail=f"Employee ID {normalized_id} is already assigned to {existing_id_holder.full_name}"
             )
 
     if not employee:
@@ -141,17 +145,10 @@ def complete_onboarding(
         employee_data["email"] = target_email # Ensure email is set
         employee_data["status"] = UserStatus.PENDING # Initial status
         
-        # We need to remove fields not in Employee model if any?
-        # Employee model has fields matching schema mostly.
-        # But let's create with minimal required and update later to be safe
-        
-        # Actually repo.create expects dict matching model fields.
-        # Let's create empty first or with safe fields
-        
         # Create new instance
         employee = Employee(
             email=target_email,
-            emp_id=data.emp_id, # We already checked availability
+            emp_id=normalized_id, # We already checked availability
             status=UserStatus.PENDING
         )
         db.add(employee)
@@ -159,7 +156,7 @@ def complete_onboarding(
         db.refresh(employee)
     
     # Update employee details
-    employee.emp_id = data.emp_id
+    employee.emp_id = normalized_id
     employee.full_name = data.full_name
     employee.first_name = data.first_name
     employee.last_name = data.last_name

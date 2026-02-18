@@ -49,33 +49,27 @@ def generate_safe_filename(original_filename: str) -> str:
 
 def normalize_emp_id(raw_id: str) -> str:
     """
-    Normalize employee ID to RBIS0000 format
-    
-    Args:
-        raw_id: Raw employee ID from file
-        
-    Returns:
-        Normalized employee ID
-        
-    Examples:
-        'RBIS1' -> 'RBIS0001'
-        '123' -> 'RBIS0123'
-        'rbis0045' -> 'RBIS0045'
+    Normalize employee ID to RBIS0000 format if it matches the pattern.
     """
+    import re
     raw_id = str(raw_id).strip()
     
     if not raw_id or raw_id.lower() == 'nan':
         return ''
     
-    # Already in RBIS format
-    if raw_id.upper().startswith('RBIS'):
-        num_part = ''.join(filter(str.isdigit, raw_id))
+    # Check if it's the standard format: RBIS followed optionally by non-digits, then digits
+    # Goal: 'RBIS1' -> 'RBIS0001', '1' -> 'RBIS0001'
+    # But leave 'RBIS-CEO1' or 'ADMIN001' alone (just uppercase)
+    
+    # Check for pure digits first
+    if raw_id.isdigit():
+        return f"RBIS{raw_id.zfill(4)}"
+        
+    # Check for RBIS + digits ONLY (maybe with space or hyphen in between)
+    match = re.search(r'^RBIS\s*[-_]?\s*(\d+)$', raw_id, re.IGNORECASE)
+    if match:
+        num_part = match.group(1)
         return f"RBIS{num_part.zfill(4)}"
     
-    # Pure number
-    elif raw_id.isdigit():
-        return f"RBIS{raw_id.zfill(4)}"
-    
-    # Other format
-    else:
-        return raw_id.upper()
+    # Otherwise, just return uppercase to keep it consistent
+    return raw_id.upper()

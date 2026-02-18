@@ -2,12 +2,11 @@
 Leave Management Endpoints (API v1)
 Handles leave types, balances, applications, and approvals
 """
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Body
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
-from typing import Optional
+from pydantic import BaseModel, Field
+from typing import Optional, Dict, List, Union
 from datetime import date, datetime
-from typing import Optional, Dict, List
 
 from app.api.dependencies import get_db, get_current_user, check_hr, check_ceo
 from app.services.leave_service import LeaveService
@@ -45,7 +44,7 @@ class HolidayCreate(BaseModel):
 class HolidayUpdate(BaseModel):
     """Schema for updating a holiday"""
     name: Optional[str] = None
-    date: Optional[date] = None
+    date: Optional[Union[date, str]] = None
 
 # --- Holiday Endpoints ---
 
@@ -72,7 +71,7 @@ def add_holiday(
 @router.put("/holidays/{id}", tags=["Admin/HR"])
 def update_holiday(
     id: int,
-    data: HolidayUpdate,
+    data: HolidayUpdate = Body(...),
     hr: Employee = Depends(check_hr),
     db: Session = Depends(get_db)
 ):

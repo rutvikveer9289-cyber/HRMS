@@ -137,9 +137,8 @@ def detect_and_clean_memory(file_content):
                             if not current_attendance_date:
                                 return None, f"Invalid State: Record found before Date header at row {index+1}"
 
-                            # Attendance Status logic updated for Half Day support
-                            # Present: >= 7 hours AND >= 4 punches
-                            # Half Day: >= 3.5 hours AND < 7 hours
+                            # Attendance Status logic: No half-days as per user request
+                            # Present: >= 3.5 hours
                             # Absent: < 3.5 hours
                             
                             def parse_to_min(ts_str):
@@ -147,10 +146,8 @@ def detect_and_clean_memory(file_content):
                                 
                             total_min = parse_to_min(total_duration)
                             
-                            if total_min >= 420 and punch_count >= 4:
+                            if total_min >= 210: # 3.5 hours
                                 status = "Present"
-                            elif total_min >= 210: # 3.5 hours
-                                status = "Half Day"
                             else:
                                 status = "Absent"
 

@@ -31,8 +31,8 @@ class FileRepository:
         return self.db.query(FileUploadLog).filter(FileUploadLog.id == log_id).first()
     
     def get_all(self) -> List[FileUploadLog]:
-        """Get all file upload logs"""
-        return self.db.query(FileUploadLog).all()
+        """Get all file upload logs (newest first)"""
+        return self.db.query(FileUploadLog).order_by(FileUploadLog.uploaded_at.desc()).all()
     
     def create(self, log_data: dict) -> FileUploadLog:
         """

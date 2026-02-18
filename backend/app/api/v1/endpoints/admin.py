@@ -17,8 +17,6 @@ class EmployeeUpdate(BaseModel):
     """Schema for employee update"""
     full_name: Optional[str] = None
     designation: Optional[str] = None
-    emp_id: Optional[str] = None
-    email: Optional[str] = None
     phone_number: Optional[str] = None
     bank_name: Optional[str] = None
     bank_account_no: Optional[str] = None

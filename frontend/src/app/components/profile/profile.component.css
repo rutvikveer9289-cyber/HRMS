@@ -35,6 +35,15 @@
   font-weight: 800;
 }
 
+.section-subtitle {
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 4px;
+}
+
 .designation {
   display: block;
   font-size: 1.1rem;
@@ -136,6 +145,13 @@
   border-color: #6366f1;
   background: white;
   box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+}
+
+.read-only-input {
+  background: #f1f5f9 !important;
+  color: #64748b !important;
+  cursor: not-allowed;
+  border-color: #e2e8f0 !important;
 }
 
 .form-actions {

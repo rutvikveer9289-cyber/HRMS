@@ -20,7 +20,12 @@
                 <div class="stat-pill pending" (click)="toggleStat('pending')" [class.active]="activeStat === 'pending'"
                     title="Pending Obligations">
                     <i data-lucide="clock"></i>
-                    <span class="v" style="font-size: 11px;">{{ formatCurrency(getTotalPendingAmount()) }}</span>
+                    <span class="v" style="font-size: 11px;">
+                        {{ formatCurrency(getTotalPendingAmount()) }}
+                        <span class="count-badge"
+                            style="background: #ef4444; color: white; padding: 2px 6px; border-radius: 10px; margin-left: 4px; font-size: 10px;">{{
+                            getPendingCount() }}</span>
+                    </span>
                 </div>
                 <div class="stat-pill amount" (click)="toggleStat('amount')" [class.active]="activeStat === 'amount'"
                     title="Net Liquidity Volume">
@@ -42,8 +47,7 @@
             (click)="setActiveTab('payroll')">Processing</button>
         <button *ngIf="canManagePayroll" [class.active]="activeTab === 'salary'" (click)="setActiveTab('salary')">Salary
             Mapping</button>
-        <button *ngIf="canManagePayroll" [class.active]="activeTab === 'overtime'"
-            (click)="setActiveTab('overtime')">Overtime</button>
+
         <button *ngIf="canManagePayroll" [class.active]="activeTab === 'deductions'"
             (click)="setActiveTab('deductions')">Deductions</button>
         <button [class.active]="activeTab === 'my-payslips'" (click)="setActiveTab('my-payslips')">Personal</button>
@@ -115,8 +119,8 @@
 
                                 <th *ngIf="!isAllHistory">Personnel</th>
                                 <th *ngIf="!isAllHistory">Earnings</th>
-                                <th *ngIf="!isAllHistory">Net Payable</th>
                                 <th *ngIf="!isAllHistory">Status</th>
+                                <th *ngIf="!isAllHistory">Payment Date</th>
                                 <th style="text-align: right;" *ngIf="!isAllHistory">Actions</th>
                             </tr>
                         </thead>
@@ -158,6 +162,8 @@
                                         </div>
                                         <div class="emp-details">
                                             <b>{{ record.emp_id }}</b>
+                                            <div style="font-size: 13px; font-weight: 600; color: #1e293b;">{{
+                                                record.owner?.full_name || 'Loading...' }}</div>
                                             <span>{{ record.owner?.bank_name || 'N/A' }}</span>
                                         </div>
                                     </div>
@@ -172,11 +178,7 @@
                                             <span>+ Allw:</span> <span>{{ formatCurrency((record.gross_salary -
                                                 record.basic_salary - record.overtime_amount) || 0) }}</span>
                                         </div>
-                                        <div *ngIf="record.overtime_amount > 0"
-                                            style="display: flex; justify-content: space-between; color: #2563eb;">
-                                            <span>+ OT:</span> <span>{{ formatCurrency(record.overtime_amount)
-                                                }}</span>
-                                        </div>
+
                                         <div style="border-top: 1px solid #e2e8f0; margin: 2px 0;"></div>
                                         <div
                                             style="display: flex; justify-content: space-between; font-weight: 600; font-size: 12px;">
@@ -190,11 +192,12 @@
                                     </div>
                                 </td>
                                 <td *ngIf="!isAllHistory">
-                                    <span class="amount-primary">{{ formatCurrency(record.net_salary) }}</span>
-                                </td>
-                                <td *ngIf="!isAllHistory">
                                     <span [class]="'status-badge status-' + record.status.toLowerCase()">{{
                                         record.status }}</span>
+                                </td>
+                                <td *ngIf="!isAllHistory">
+                                    <span style="font-size: 12px; color: #475569;">{{ record.payment_date | date:'dd MMM
+                                        yyyy' }}</span>
                                 </td>
                                 <td *ngIf="!isAllHistory">
                                     <div
@@ -215,6 +218,12 @@
                                             (click)="openPaymentModal(record)">
                                             <span>Disburse</span>
                                             <i data-lucide="arrow-right" style="width: 12px;"></i>
+                                        </button>
+
+                                        <button *ngIf="record.status !== 'PAID'" class="btn-circle"
+                                            style="color: #ef4444; background: #fef2f2;"
+                                            (click)="deletePayrollRecord(record.id)" title="Delete Record">
+                                            <i data-lucide="trash-2" style="width: 16px;"></i>
                                         </button>
 
                                         <div *ngIf="record.status === 'PAID'" style="color: #10b981;">
@@ -367,45 +376,7 @@
         </div>
     </div>
 
-    <!-- Overtime Approvals Tab -->
-    <div *ngIf="activeTab === 'overtime'" class="tab-content">
-        <div class="main-content-card">
-            <div class="board-header">
-                <h2>Pending Overtime Requests</h2>
-            </div>
-            <div *ngIf="pendingOvertimeApprovals.length === 0" class="empty-state" style="padding: 60px;">
-                <p>No pending overtime approvals</p>
-            </div>
-            <div *ngIf="pendingOvertimeApprovals.length > 0" class="table-area">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Employee</th>
-                            <th>Date</th>
-                            <th>OT Hours</th>
-                            <th>Amount</th>
-                            <th style="text-align: right;">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr *ngFor="let ot of pendingOvertimeApprovals">
-                            <td><b>{{ ot.emp_id }}</b></td>
-                            <td>{{ ot.date | date:'dd MMM yyyy' }}</td>
-                            <td style="color: #2563eb; font-weight: 700;">{{ ot.overtime_hours }}h</td>
-                            <td>{{ formatCurrency(ot.overtime_amount) }}</td>
-                            <td class="actions" style="display: flex; gap: 8px; justify-content: flex-end;">
-                                <button class="btn-success" style="padding: 6px 12px; font-size: 12px;"
-                                    (click)="approveOvertime(ot.id)">Approve</button>
-                                <button class="btn-danger"
-                                    style="padding: 6px 12px; font-size: 12px; background: #fef2f2; border: 1px solid #fee2e2; color: #ef4444;"
-                                    (click)="rejectOvertime(ot.id)">Reject</button>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
+
 
     <!-- Deductions Tab -->
     <div *ngIf="activeTab === 'deductions'" class="tab-content">
@@ -573,10 +544,7 @@
                     <label>Other Allw.</label>
                     <input type="number" class="mini-input" [(ngModel)]="editingRecord.other_allowances" />
                 </div>
-                <div class="form-group">
-                    <label>Overtime Amount</label>
-                    <input type="number" class="mini-input" [(ngModel)]="editingRecord.overtime_amount" />
-                </div>
+
                 <div class="form-group" style="grid-column: span 2;">
                     <label style="color: #ef4444;">Total Deductions (Override)</label>
                     <input type="number" class="mini-input" [(ngModel)]="editingRecord.total_deductions"

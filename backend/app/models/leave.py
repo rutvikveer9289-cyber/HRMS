@@ -62,7 +62,7 @@ class LeaveApprovalLog(Base):
     # Relationship to LeaveRequest
     request = relationship("LeaveRequest", backref=backref("approval_logs", cascade="all, delete-orphan"))
     
-    approver_id = Column(Unicode(50), ForeignKey("employees.emp_id", ondelete="CASCADE"))
+    approver_id = Column(Unicode(50), ForeignKey("employees.emp_id", ondelete="NO ACTION"), nullable=True)
     
     # Relationship to Approver
     approver = relationship("Employee", primaryjoin="LeaveApprovalLog.approver_id == Employee.emp_id", foreign_keys=[approver_id], backref=backref("approvals_given", cascade="all, delete-orphan"))

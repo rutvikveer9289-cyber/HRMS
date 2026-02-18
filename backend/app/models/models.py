@@ -34,4 +34,4 @@ from app.models.communication import Announcement, Notification
 from app.models.salary_structure import SalaryStructure
 from app.models.deduction import DeductionType, EmployeeDeduction, CalculationType
 from app.models.payroll import PayrollRecord, PayrollStatus
-from app.models.overtime import OvertimeRecord, OvertimeStatus
+

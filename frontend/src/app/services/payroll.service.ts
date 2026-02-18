@@ -67,4 +67,8 @@ export class PayrollService {
             mode: mode
         });
     }
+
+    deletePayrollRecord(payrollId: number): Observable<any> {
+        return this.http.delete(`${this.apiUrl}/${payrollId}`);
+    }
 }

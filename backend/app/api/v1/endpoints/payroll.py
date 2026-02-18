@@ -194,20 +194,22 @@ async def get_employee_payroll_history(
     payroll_repo = PayrollRepository(db)
     return payroll_repo.get_by_emp_id(emp_id, limit=limit)
 
-@router.put("/{payroll_id}", response_model=PayrollRecordResponse)
-async def update_payroll_details(
-    payroll_id: int,
-    request: PayrollRecordUpdate,
-    db: Session = Depends(get_db),
-    current_user: Employee = Depends(get_current_user)
-):
-    """Update processed payroll record (earnings/deductions)"""
-    if current_user.role not in ["HR", "SUPER_ADMIN", "CEO"]:
-        raise HTTPException(status_code=403, detail="Not authorized")
-    
-    payroll_service = PayrollService(db)
     return payroll_service.update_payroll_record(
         payroll_id=payroll_id,
         update_data=request.model_dump(exclude_unset=True),
         updated_by=current_user.emp_id
     )
+
+@router.delete("/{payroll_id}")
+async def delete_payroll_record(
+    payroll_id: int,
+    db: Session = Depends(get_db),
+    current_user: Employee = Depends(get_current_user)
+):
+    """Delete a payroll record"""
+    if current_user.role not in ["HR", "SUPER_ADMIN", "CEO"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    payroll_service = PayrollService(db)
+    payroll_service.delete_payroll_record(payroll_id)
+    return {"status": "success", "message": "Payroll record deleted"}

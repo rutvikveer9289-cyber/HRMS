@@ -18,6 +18,9 @@ export class LoginComponent {
     password: ''
   };
 
+  showPassword = false;
+  showNewPassword = false;
+
   // Forgot Password Flow
   showForgotPasswordModal = false;
   forgotPasswordStep: 'email' | 'otp' | 'success' = 'email';
