@@ -582,32 +582,59 @@
             </div>
 
             <div style="display: flex; flex-direction: column; gap: 12px;">
-                <div class="form-group">
+                <!-- Real Payment Toggle -->
+                <div
+                    style="background: #f0f9ff; padding: 12px; border-radius: 8px; border: 1px dashed #3b82f6; margin-bottom: 8px;">
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                        <input type="checkbox" [(ngModel)]="paymentDetails.isRealPayment"
+                            style="width: 18px; height: 18px;">
+                        <span style="font-weight: 600; color: #1e3a5f;">Process via Razorpay (Real Money
+                            Transfer)</span>
+                    </label>
+                    <p style="font-size: 11px; color: #64748b; margin: 8px 0 0 28px;">
+                        Initiates a secure bank transfer via Razorpay X. Ensure employee bank details are correct.
+                    </p>
+                </div>
+
+                <div class="form-group" *ngIf="!paymentDetails.isRealPayment">
                     <label style="font-size: 12px; font-weight: 600; color: #475569;">Payment Method</label>
                     <select [(ngModel)]="paymentDetails.method" class="form-control"
                         style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px;">
                         <option *ngFor="let m of paymentMethods" [value]="m">{{ m }}</option>
                     </select>
                 </div>
-                <div class="form-group">
+                <div class="form-group" *ngIf="!paymentDetails.isRealPayment">
                     <label style="font-size: 12px; font-weight: 600; color: #475569;">Transaction / Reference
                         ID</label>
                     <input type="text" [(ngModel)]="paymentDetails.reference"
                         placeholder="e.g. Bank Ref, Cheque No, or ID" class="form-control"
                         style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px;">
                 </div>
-                <div class="form-group">
+                <div class="form-group" *ngIf="!paymentDetails.isRealPayment">
                     <label style="font-size: 12px; font-weight: 600; color: #475569;">Payment Date</label>
                     <input type="date" [(ngModel)]="paymentDetails.date" class="form-control"
                         style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                </div>
+
+                <div class="form-group" *ngIf="paymentDetails.isRealPayment">
+                    <label style="font-size: 12px; font-weight: 600; color: #475569;">Transfer Mode</label>
+                    <select [(ngModel)]="paymentDetails.transferMode" class="form-control"
+                        style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                        <option value="IMPS">IMPS (Instant)</option>
+                        <option value="NEFT">NEFT (Standard)</option>
+                        <option value="RTGS">RTGS (High Value)</option>
+                    </select>
                 </div>
             </div>
 
             <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">
                 <button class="btn-secondary" (click)="closePaymentModal()">Cancel</button>
                 <button class="btn-success" (click)="confirmDisbursement()"
-                    style="background: #10b981; color: white; padding: 8px 16px; border-radius: 6px; border: none;">Confirm
-                    Payment</button>
+                    [style.background]="paymentDetails.isRealPayment ? '#2563eb' : '#10b981'"
+                    style="color: white; padding: 10px 20px; border-radius: 6px; border: none; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                    <i data-lucide="zap" *ngIf="paymentDetails.isRealPayment" style="width: 16px;"></i>
+                    {{ paymentDetails.isRealPayment ? 'Initiate Bank Transfer' : 'Record Manual Payment' }}
+                </button>
             </div>
         </div>
     </div>

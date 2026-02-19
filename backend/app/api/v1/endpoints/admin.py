@@ -2,7 +2,7 @@
 Admin Endpoints (API v1)
 Handles employee management operations
 """
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional
@@ -95,3 +95,77 @@ async def upload_master(
     """Upload completed employee master Excel"""
     service = AdminService(db)
     return await service.process_employee_master(file, admin)
+
+# --- Employee Document Management ---
+
+@router.get("/employees/{emp_id}/documents")
+async def get_employee_documents(
+    emp_id: str,
+    admin: Employee = Depends(check_admin),
+    db: Session = Depends(get_db)
+):
+    """Get all documents for a specific employee"""
+    from app.models.models import EmployeeDocument
+    docs = db.query(EmployeeDocument).filter(EmployeeDocument.emp_id == emp_id).all()
+    return docs
+
+@router.post("/employees/{emp_id}/documents/upload")
+async def upload_employee_document(
+    emp_id: str,
+    document_type: str = Form(...),
+    file: UploadFile = File(...),
+    admin: Employee = Depends(check_admin),
+    db: Session = Depends(get_db)
+):
+    """Upload a new document for an existing employee"""
+    import os
+    import shutil
+    from datetime import datetime
+    from app.models.models import EmployeeDocument
+    
+    upload_dir = os.path.join("uploads", "documents")
+    if not os.path.exists(upload_dir):
+        os.makedirs(upload_dir)
+        
+    # Generate safe filename
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"{emp_id}_{document_type}_{timestamp}_{file.filename}"
+    file_path = os.path.join(upload_dir, filename)
+    
+    # Save to disk
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    
+    # Record in DB
+    new_doc = EmployeeDocument(
+        emp_id=emp_id,
+        document_type=document_type,
+        document_name=file.filename,
+        file_name=filename,
+        file_path=file_path
+    )
+    db.add(new_doc)
+    db.commit()
+    return {"message": "Document uploaded successfully", "document": new_doc}
+
+@router.delete("/employees/documents/{doc_id}")
+async def delete_employee_document(
+    doc_id: int,
+    admin: Employee = Depends(check_admin),
+    db: Session = Depends(get_db)
+):
+    """Delete a specific employee document"""
+    import os
+    from app.models.models import EmployeeDocument
+    
+    doc = db.query(EmployeeDocument).filter(EmployeeDocument.id == doc_id).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+        
+    # Delete from disk if exists
+    if os.path.exists(doc.file_path):
+        os.remove(doc.file_path)
+        
+    db.delete(doc)
+    db.commit()
+    return {"message": "Document deleted successfully"}

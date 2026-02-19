@@ -36,7 +36,7 @@
             <ng-container *ngIf="editingEmployee?.id !== emp.id">
               {{ emp.full_name }}
             </ng-container>
-            <input *ngIf="editingEmployee?.id === emp.id" [(ngModel)]="editingEmployee.full_name" class="edit-input" />
+            <div *ngIf="editingEmployee?.id === emp.id" class="read-only-text">{{ editingEmployee.full_name }}</div>
           </td>
           <td class="mobile-hide">
             <ng-container *ngIf="editingEmployee?.id !== emp.id">
@@ -73,6 +73,9 @@
           </td>
           <td class="actions-cell" *ngIf="canEdit">
             <div class="action-buttons" *ngIf="editingEmployee?.id !== emp.id">
+              <button class="btn-icon docs" (click)="manageDocuments(emp)" title="Documents">
+                <i data-lucide="files"></i>
+              </button>
               <button class="btn-icon edit" (click)="editEmployee(emp)" title="Edit">
                 <i data-lucide="pencil"></i>
               </button>
@@ -96,6 +99,52 @@
     <div class="empty-state" *ngIf="filteredEmployees.length === 0">
       <i class="lucide-users"></i>
       <p>No employees found matching your search.</p>
+    </div>
+  </div>
+
+  <!-- Document Management Modal -->
+  <div class="modal-overlay" *ngIf="isDocModalOpen" (click)="closeDocModal()">
+    <div class="doc-modal animate__animated animate__zoomIn" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title">
+          <i data-lucide="folder-open"></i>
+          <div>
+            <h3>Digital Repository</h3>
+            <p>{{ activeEmployee?.full_name }} ({{ activeEmployee?.emp_id }})</p>
+          </div>
+        </div>
+        <button class="btn-close" (click)="closeDocModal()">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="doc-grid">
+          <div class="doc-card" *ngFor="let type of docTypes" [class.has-file]="hasDoc(type.key)">
+            <div class="doc-info">
+              <span class="doc-label">{{ type.label }}</span>
+              <div class="doc-status" *ngIf="hasDoc(type.key)">
+                <i data-lucide="check-circle"></i>
+                <span>{{ getDocName(type.key) }}</span>
+              </div>
+              <div class="doc-status pending" *ngIf="!hasDoc(type.key)">
+                <i data-lucide="alert-circle"></i>
+                <span>Submission Required</span>
+              </div>
+            </div>
+
+            <div class="doc-actions">
+              <input type="file" #fileInput (change)="uploadDoc($event, type.key)" hidden>
+              <button class="btn-upload" (click)="fileInput.click()" *ngIf="!hasDoc(type.key)"
+                [disabled]="isDocUploading">
+                <i data-lucide="upload"></i>
+                Select File
+              </button>
+              <button class="btn-delete" (click)="deleteDoc(getDocId(type.key))" *ngIf="hasDoc(type.key)">
+                <i data-lucide="trash"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>

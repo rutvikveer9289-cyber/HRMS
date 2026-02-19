@@ -18,7 +18,7 @@ A comprehensive, clean, and professional HRMS application for managing employees
 
 
 ### 🏖️ Leave Management
-- Multiple leave types (Casual, Sick, Earned, etc.)
+- Multiple leave types (paid leave.)
 - Leave request and approval workflow (HR → CEO)
 - Leave balance tracking
 - Holiday calendar management
@@ -161,9 +161,12 @@ rbis-hrms-main/
 ```env
 DATABASE_URL=mssql+pyodbc://...
 SECRET_KEY=your_secret_key
-ACCESS_TOKEN_EXPIRE_MINUTES=480
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
+
+# Razorpay X Configuration (For Real Payments)
+RAZORPAY_KEY_ID=rzp_live_your_key_here
+RAZORPAY_KEY_SECRET=your_secret_here
+RAZORPAY_ACCOUNT_NUMBER=X000123456
+RAZORPAY_MODE=live
 ```
 
 ### Frontend (environment.ts)
@@ -207,11 +210,12 @@ python verify.py
 3. Click "Upload Attendance File"
 4. Select Excel file and upload
 
-### Process Payroll
+### Process Payroll & Real Payments
 1. Navigate to "Payroll Management"
 2. Select month and year
-3. Click "Generate Payroll"
-4. Review and approve
+3. Click "Run Full Calculation"
+4. **Individual Payment**: Click "Disburse" → Toggle "Process via Razorpay" → "Initiate Bank Transfer"
+5. **Bulk Payment**: Select multiple entries → Click "Disburse Total" → Confirm Real Payment
 
 ## 🛠️ Technology Stack
 

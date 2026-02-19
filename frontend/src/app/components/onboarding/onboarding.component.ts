@@ -78,7 +78,25 @@ export class OnboardingComponent implements OnInit {
     }
 
     this.loading = true;
-    this.attendanceService.onboardEmployee(this.employee).subscribe({
+
+    // Create FormData for file upload support
+    const formData = new FormData();
+    formData.append('emp_id', this.employee.emp_id);
+    formData.append('full_name', this.employee.full_name);
+    formData.append('first_name', this.employee.first_name);
+    formData.append('last_name', this.employee.last_name);
+    formData.append('phone_number', this.employee.phone_number);
+    formData.append('designation', this.employee.designation);
+    formData.append('email', this.employee.email);
+
+    // Append documents if they exist
+    this.documents.forEach(doc => {
+      if (doc.file) {
+        formData.append(doc.key, doc.file);
+      }
+    });
+
+    this.attendanceService.onboardEmployee(formData).subscribe({
       next: (res) => {
         this.loading = false;
         this.notificationService.showAlert(res.message, 'success');

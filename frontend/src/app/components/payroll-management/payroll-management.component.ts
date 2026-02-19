@@ -280,11 +280,13 @@ export class PayrollManagementComponent implements OnInit {
   // Payment Modal Logic
   isPaymentModalOpen: boolean = false;
   paymentRecord: any = null;
-  paymentDetails = {
+  paymentDetails: any = {
     method: 'Bank Transfer',
     date: new Date().toISOString().split('T')[0],
     reference: '',
-    note: ''
+    note: '',
+    isRealPayment: false,
+    transferMode: 'IMPS'
   };
 
   openPaymentModal(record: any): void {
@@ -293,7 +295,9 @@ export class PayrollManagementComponent implements OnInit {
       method: 'Bank Transfer',
       date: new Date().toISOString().split('T')[0],
       reference: '',
-      note: ''
+      note: '',
+      isRealPayment: false,
+      transferMode: 'IMPS'
     };
     this.isPaymentModalOpen = true;
   }
@@ -305,6 +309,25 @@ export class PayrollManagementComponent implements OnInit {
 
   confirmDisbursement(): void {
     if (!this.paymentRecord) return;
+
+    if (this.paymentDetails.isRealPayment) {
+      if (!confirm(`CONFIRM REAL PAYMENT: Transfer ₹${this.paymentRecord.net_salary} to ${this.paymentRecord.emp_id}? This action cannot be reversed.`)) return;
+
+      this.loading = true;
+      this.payrollService.initiateSinglePayment(this.paymentRecord.id, this.paymentDetails.transferMode).subscribe({
+        next: (result) => {
+          alert(`Razorpay Payment Successful!\nTransaction ID: ${result.transaction_id}\nUTR: ${result.utr || 'Pending'}`);
+          this.closePaymentModal();
+          this.loadPayrollRecords();
+        },
+        error: (err) => {
+          console.error('Razorpay Error:', err);
+          alert('Razorpay Payment Failed: ' + (err.error?.detail || err.message));
+          this.loading = false;
+        }
+      });
+      return;
+    }
 
     if (!this.paymentDetails.reference && this.paymentDetails.method !== 'Cash') {
       if (!confirm('Proceed without Transaction Reference?')) return;

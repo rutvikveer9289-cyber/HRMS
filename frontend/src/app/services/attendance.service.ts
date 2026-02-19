@@ -57,8 +57,8 @@ export class AttendanceService {
     return this.http.get<{ next_id: string }>(`${this.apiUrl}/onboarding/next-id`);
   }
 
-  onboardEmployee(employeeData: any): Observable<any> {
-    return this.http.post(`${this.apiUrl}/onboarding/onboard`, employeeData);
+  onboardEmployee(formData: FormData): Observable<any> {
+    return this.http.post(`${this.apiUrl}/onboarding/onboard`, formData);
   }
 
   updateAttendance(id: number, data: any): Observable<any> {

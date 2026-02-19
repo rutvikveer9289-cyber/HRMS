@@ -64,7 +64,6 @@ export class AnalyticsComponent implements OnInit, OnDestroy {
 
     this.adminService.getEmployees().subscribe(emps => {
       this.allEmployees = emps;
-      this.attendanceService.fetchAttendance();
     });
     this.subs.add(this.attendanceService.typeAData$.subscribe(() => this.syncData()));
     this.subs.add(this.attendanceService.typeBData$.subscribe(() => this.syncData()));

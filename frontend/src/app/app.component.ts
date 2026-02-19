@@ -50,6 +50,11 @@ export class AppComponent implements OnInit {
       this.isAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'CEO';
       this.isHr = user?.role === 'HR' || user?.role === 'SUPER_ADMIN' || user?.role === 'CEO';
       this.isCeo = user?.role === 'CEO' || user?.role === 'SUPER_ADMIN';
+
+      if (user) {
+        this.attendanceService.fetchAttendance();
+        this.loadNotifications();
+      }
     });
 
     // Subscribe to data availability
@@ -59,7 +64,7 @@ export class AppComponent implements OnInit {
 
     // Load notifications periodically
     if (this.authService.isLoggedIn()) {
-      this.loadNotifications();
+      // (Already called in subscription now, but we can keep the interval logic)
       setInterval(() => {
         // Only fetch in background if menu is closed to prevent flickering/UI reset
         if (this.authService.isLoggedIn() && !this.notificationMenuOpen) {

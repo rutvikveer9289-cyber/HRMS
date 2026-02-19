@@ -11,6 +11,7 @@ from app.models.base import get_ist_now, IST
 
 # Re-export Employee models
 from app.models.employee import Employee, UserRole, UserStatus
+from app.models.employee_document import EmployeeDocument
 
 # Re-export Attendance
 from app.models.attendance import Attendance

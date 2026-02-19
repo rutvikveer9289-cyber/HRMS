@@ -69,19 +69,16 @@
       <div class="console-search-bar">
         <div class="search-input">
           <label>Employee ID / Name</label>
-          <input
-            type="text"
-            [(ngModel)]="editSearchEmpId"
-            placeholder="e.g. RBIS0010"
-          />
+          <input type="text" [(ngModel)]="editSearchEmpId" (ngModelChange)="applyFilters()"
+            placeholder="e.g. RBIS0010" />
         </div>
         <div class="search-input">
           <label>From Date</label>
-          <input type="date" [(ngModel)]="fromDate" />
+          <input type="date" [(ngModel)]="fromDate" (ngModelChange)="applyFilters()" />
         </div>
         <div class="search-input">
           <label>To Date</label>
-          <input type="date" [(ngModel)]="toDate" />
+          <input type="date" [(ngModel)]="toDate" (ngModelChange)="applyFilters()" />
         </div>
       </div>
 
@@ -99,7 +96,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let row of editBoardData">
+            <tr *ngFor="let row of filteredBoardData">
               <td>{{ row.Date }}</td>
               <td>{{ row.EmpID }}</td>
               <td>{{ row.Employee_Name || "--" }}</td>
@@ -138,19 +135,11 @@
         <div class="form-row">
           <div class="form-group">
             <label>First In</label>
-            <input
-              type="text"
-              [(ngModel)]="editingRecord.First_In"
-              placeholder="HH:MM"
-            />
+            <input type="text" [(ngModel)]="editingRecord.First_In" placeholder="HH:MM" />
           </div>
           <div class="form-group">
             <label>Last Out</label>
-            <input
-              type="text"
-              [(ngModel)]="editingRecord.Last_Out"
-              placeholder="HH:MM"
-            />
+            <input type="text" [(ngModel)]="editingRecord.Last_Out" placeholder="HH:MM" />
           </div>
         </div>
         <div class="form-group">

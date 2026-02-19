@@ -3,6 +3,7 @@ Employee Model
 Contains Employee model and related enums
 """
 from sqlalchemy import Column, Integer, String, DateTime, Boolean, Unicode
+from sqlalchemy.orm import relationship
 import enum
 from app.models.base import Base, get_ist_now
 
@@ -48,3 +49,6 @@ class Employee(Base):
     bank_ifsc_code = Column(String(20), nullable=True)
     
     created_at = Column(DateTime, default=get_ist_now)
+
+    # Relationships
+    documents = relationship("EmployeeDocument", back_populates="owner", cascade="all, delete-orphan")

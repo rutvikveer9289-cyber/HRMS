@@ -180,17 +180,23 @@ export class DashboardComponent implements OnInit, OnDestroy {
         // Fetch All Employees first to know who is absent
         this.adminService.getEmployees().subscribe(emps => {
             this.allEmployees = emps;
-            this.attendanceService.fetchAttendance();
+            // If data is already available in service, sync it now
+            if (this.attendanceService.typeAData.length > 0 || this.attendanceService.typeBData.length > 0) {
+                this.syncData();
+                this.loading = false;
+            }
         });
 
-        this.subs.add(this.attendanceService.typeAData$.subscribe(() => {
-            this.syncData();
-            this.loading = false;
+        // Listen for data updates
+        this.subs.add(this.attendanceService.typeAData$.subscribe(data => {
+            if (data && data.length > 0) {
+                this.syncData();
+                this.loading = false;
+            }
         }));
-        this.subs.add(this.attendanceService.typeBData$.subscribe(() => this.syncData()));
+
         this.subs.add(this.attendanceService.hasData$.subscribe(has => {
             this.hasData = has;
-            // Ensure loading is false if data is returned or check fails
             if (has) this.loading = false;
         }));
 
@@ -208,23 +214,36 @@ export class DashboardComponent implements OnInit, OnDestroy {
         }));
     }
 
+    private syncTimeout: any;
     syncData() {
+        // Debounce sync to avoid double-firing from multiple data subjects
+        if (this.syncTimeout) clearTimeout(this.syncTimeout);
+        this.syncTimeout = setTimeout(() => this._performSync(), 50);
+    }
+
+    private _performSync() {
         const dataA = this.attendanceService.typeAData;
         const dataB = this.attendanceService.typeBData;
 
-        const mergeMap = new Map();
-        [...dataA, ...dataB].forEach(rec => {
-            const key = `${rec.EmpID}_${rec.Date}`;
-            if (!mergeMap.has(key)) {
-                mergeMap.set(key, { ...rec });
+        // Unified merge map for high-speed deduplication
+        const mergeMap = new Map<string, any>();
+        const allRecs = [...dataA, ...dataB];
+
+        for (const rec of allRecs) {
+            const dateStr = String(rec.Date).split('T')[0];
+            const key = `${rec.EmpID}_${dateStr}`;
+            const existing = mergeMap.get(key);
+
+            if (!existing) {
+                mergeMap.set(key, { ...rec, Date: dateStr });
             } else {
-                const existing = mergeMap.get(key);
+                // Priority: Merge missing details
                 existing.In_Duration = existing.In_Duration || rec.In_Duration;
                 existing.Out_Duration = existing.Out_Duration || rec.Out_Duration;
                 existing.Total_Duration = existing.Total_Duration || rec.Total_Duration;
 
                 // Priority: Present > On Leave > Absent
-                const priority: { [key: string]: number } = { 'Present': 2, 'On Leave': 1, 'Absent': 0 };
+                const priority: Record<string, number> = { 'Present': 2, 'On Leave': 1, 'Absent': 0 };
                 const currentStatus = rec.Attendance || 'Absent';
                 const existingStatus = existing.Attendance || 'Absent';
 
@@ -232,16 +251,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
                     existing.Attendance = currentStatus;
                 }
             }
-        });
+        }
 
-        this.rawData = Array.from(mergeMap.values());
-
-        // Fill gaps for missing employees on existing dates
+        // Optimized Gap Filling: Only process unique dates found in records
         if (this.allEmployees.length > 0) {
-            const datesInRecords = [...new Set(this.rawData.map(r => String(r.Date).split('T')[0]))].sort();
+            const datesInRecords = new Set<string>();
+            mergeMap.forEach(v => datesInRecords.add(v.Date));
 
-            datesInRecords.forEach(dateStr => {
-                this.allEmployees.forEach(emp => {
+            for (const dateStr of datesInRecords) {
+                for (const emp of this.allEmployees) {
                     const key = `${emp.EmpID}_${dateStr}`;
                     if (!mergeMap.has(key)) {
                         mergeMap.set(key, {
@@ -260,22 +278,25 @@ export class DashboardComponent implements OnInit, OnDestroy {
                             rec.Employee_Name = emp.Name;
                         }
                     }
-                });
-            });
+                }
+            }
         }
 
-        this.rawData = Array.from(mergeMap.values()).filter((rec: any) => {
-            const dateStr = String(rec.Date).split('T')[0];
+        // Final Filter: Efficiency filter for weekends/holidays
+        const finalData: any[] = [];
+        const holidayMap = new Set(this.allHolidays.map(h => String(h.date).split('T')[0]));
+
+        mergeMap.forEach(rec => {
             const date = new Date(rec.Date);
-
             const isSunday = date.getDay() === 0;
-            const isHoliday = this.allHolidays.some(h => String(h.date).split('T')[0] === dateStr);
+            const isHoliday = holidayMap.has(rec.Date);
 
-            if ((isSunday || isHoliday) && rec.Attendance !== 'Present') {
-                return false;
+            if (!((isSunday || isHoliday) && rec.Attendance !== 'Present')) {
+                finalData.push(rec);
             }
-            return true;
         });
+
+        this.rawData = finalData;
         this.updateFilterOptions();
         this.applyFilters();
     }

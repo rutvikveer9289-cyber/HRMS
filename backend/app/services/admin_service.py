@@ -53,6 +53,8 @@ class AdminService:
             del update_data['emp_id']
         if 'email' in update_data:
             del update_data['email']
+        if 'full_name' in update_data:
+            del update_data['full_name']
         
         # Update fields
         for key, value in update_data.items():

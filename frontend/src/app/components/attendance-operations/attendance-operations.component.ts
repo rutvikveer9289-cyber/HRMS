@@ -42,7 +42,6 @@ export class AttendanceOperationsComponent implements OnInit, OnDestroy {
     this.isHr = role === 'HR' || this.isAdmin;
     this.isCeo = role === 'CEO' || this.isAdmin;
 
-    this.attendanceService.fetchAttendance();
     this.subs.add(this.attendanceService.typeAData$.subscribe(() => this.syncData()));
     this.subs.add(this.attendanceService.typeBData$.subscribe(() => this.syncData()));
   }
@@ -51,12 +50,15 @@ export class AttendanceOperationsComponent implements OnInit, OnDestroy {
     this.subs.unsubscribe();
   }
 
+  filteredBoardData: any[] = [];
+
   syncData() {
     const dataA = this.attendanceService.typeAData;
     const dataB = this.attendanceService.typeBData;
     const mergeMap = new Map();
 
-    [...dataA, ...dataB].forEach(rec => {
+    const all = [...dataA, ...dataB];
+    for (const rec of all) {
       const key = `${rec.EmpID}_${rec.Date}`;
       if (!mergeMap.has(key)) {
         mergeMap.set(key, { ...rec });
@@ -66,16 +68,15 @@ export class AttendanceOperationsComponent implements OnInit, OnDestroy {
         existing.Out_Duration = existing.Out_Duration || rec.Out_Duration;
         if (rec.Attendance === 'Present') existing.Attendance = 'Present';
       }
-    });
+    }
     this.rawData = Array.from(mergeMap.values());
+    this.applyFilters();
   }
 
-  get editBoardData() {
-    let d = this.rawData;
+  applyFilters() {
+    let d = [...this.rawData];
     if (this.editSearchEmpId.trim()) {
       const term = this.editSearchEmpId.trim().toLowerCase();
-
-      // Normalize term if it's a number or simple RBIS format
       let normalizedTerm = term;
       if (term.startsWith('rbis')) {
         const num = term.replace('rbis', '').replace(/^0+/, '');
@@ -98,10 +99,12 @@ export class AttendanceOperationsComponent implements OnInit, OnDestroy {
         return dateStr >= start && dateStr <= end;
       });
     }
+
     if (!this.editSearchEmpId && !this.fromDate) {
-      return d.slice(0, 50);
+      this.filteredBoardData = d.slice(0, 50);
+    } else {
+      this.filteredBoardData = d;
     }
-    return d;
   }
 
   toggleEditMode() {

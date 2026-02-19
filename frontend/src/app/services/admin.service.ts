@@ -32,4 +32,20 @@ export class AdminService {
     formData.append('file', file);
     return this.http.post(`${this.apiUrl}/employees/upload`, formData);
   }
+
+  // Document Management
+  getEmployeeDocuments(empId: string): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/employees/${empId}/documents`);
+  }
+
+  uploadEmployeeDocument(empId: string, docType: string, file: File): Observable<any> {
+    const formData = new FormData();
+    formData.append('document_type', docType);
+    formData.append('file', file);
+    return this.http.post(`${this.apiUrl}/employees/${empId}/documents/upload`, formData);
+  }
+
+  deleteEmployeeDocument(docId: number): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/employees/documents/${docId}`);
+  }
 }

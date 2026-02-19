@@ -6,7 +6,7 @@
   <title>RBIS_HRMS</title>
   <base href="/" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="icon" type="image/x-icon" href="https://huntscaler.blob.core.windows.net/rbisimages/rbis logo .svg" />
+  <link rel="icon" type="image/x-icon" href="favicon.ico" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
@@ -19,38 +19,31 @@
 <body>
   <app-root></app-root>
   <script>
-    // Simple but effective icon initialization
+    // Optimized icon initialization
     let isUpdating = false;
     function triggerIcons() {
       if (typeof lucide !== 'undefined' && !isUpdating) {
         isUpdating = true;
         lucide.createIcons();
-        // Reset after a short delay to allow DOM to settle
-        setTimeout(() => { isUpdating = false; }, 100);
+        setTimeout(() => { isUpdating = false; }, 200);
       }
     }
 
-    // Run periodically for safety during initial load
-    const iconInterval = setInterval(triggerIcons, 1000);
-    setTimeout(() => clearInterval(iconInterval), 10000);
-
-    // Also run on route changes
+    // Run on initial load and route changes
+    window.addEventListener('load', triggerIcons);
     window.addEventListener('popstate', triggerIcons);
 
-    // Watch for major DOM changes - with a simple debounce to avoid feedback loops
-    let debounceTimer;
-    const observer = new MutationObserver((mutations) => {
-      // Only trigger if we see new elements that might need icons
-      const hasPotentialIcons = mutations.some(m =>
-        Array.from(m.addedNodes).some(n => n.nodeType === 1 && (n.hasAttribute('data-lucide') || n.querySelector('[data-lucide]')))
-      );
+    // Efficient background check instead of constant mutation observation
+    const iconInterval = setInterval(triggerIcons, 2000);
+    // Stop aggressive polling after 30 seconds
+    setTimeout(() => {
+      clearInterval(iconInterval);
+      // Fallback: keep a very slow poll for any dynamic components
+      setInterval(triggerIcons, 5000);
+    }, 30000);
 
-      if (hasPotentialIcons) {
-        clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(triggerIcons, 100);
-      }
-    });
-    observer.observe(document.body, { childList: true, subtree: true });
+    // Global hook for manual triggers if needed
+    window.refreshIcons = triggerIcons;
   </script>
 </body>
 
